@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            The Lounge – Shoutbox Beautifier (Android) (ThatNeoByte Edition)
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         2.7-tnb.1
+// @version         2.7-tnb.2
 // @description     Advanced rework of the original Shoutbox Beautifier for The Lounge. Reformats bridged chatbot messages to appear as native user messages, with extensible handler architecture, decorators, metadata-driven styling, regex matching, preview-safe DOM updates, and expanded network support.
 //
 // @author          spindrift
@@ -346,7 +346,7 @@
 
             enabled: true,
             handler: function (msg) {
-                const match = msg.text.match(/^\[New-Request\]-\[Name: ([^\]]+)\]-\[Category: ([^\]]+)\]-\[Type: ([^\]]+)\]-\[Bounty: ([^\]]+)\]-\[Link: ([^\]]+)\].*$/);
+                const match = msg.text.match(/^\[New-Request\]-\[Name: (.+)\]-\[Category: ([^\]]+)\]-\[Type: ([^\]]+)\]-\[Bounty: ([^\]]+)\]-\[Link: ([^\]]+)\].*$/);
                 if (!match) return null;
 
                 const title = match[1];
@@ -379,22 +379,44 @@
             }
         },
         {
-            // Format: [New-Topic|Post]-[Name: Title]-[Forum: Forum]-[User: Username]-[Link: Link]
+            // Format: [New-Topic]-[Name: Title]-[Forum: Forum]-[User: Username]-[Link: Link]
             // Used at: DP
 
             enabled: true,
             handler: function (msg) {
-                const match = msg.text.match(/^\[New-(Topic|Post)\]-\[Name: ([^\]]+)\]-\[Forum: ([^\]]+)\]-\[User: ([^\]]+)\]-\[Link: ([^\]]+)\].*$/);
+                const match = msg.text.match(/^\[New-Topic\]-\[Name: (.+)\]-\[Forum: ([^\]]+)\]-\[User: ([^\]]+)\]-\[Link: ([^\]]+)\].*$/);
                 if (!match) return null;
 
-                const type = match[1]
-                const title = match[2];
-                const forum = match[3];
-                const username = match[4];
-                const link = match[5];
-                const start = (type === "Topic") ? "Started": "Created";
+                const title = match[1];
+                const forum = match[2];
+                const username = match[3];
+                const link = match[4];
 
-                const newMessage = `${start} a new ${type}: <a href="${link}">${title}</a> in ${forum}`;
+                const newMessage = `Started a new topic: <a href="${link}">${title}</a> in ${forum}`;
+
+                return {
+                    username: username,
+                    newMessage: newMessage,
+                    prefix: "(@",
+                    suffix: ")",
+                };
+            }
+        },
+        {
+            // Format: [New-Post]-[Name: Title]-[Forum: Forum]-[User: Username]-[Link: Link]
+            // Used at: DP
+
+            enabled: true,
+            handler: function (msg) {
+                const match = msg.text.match(/^\[New-Post]-\[Name: (.+)\]-\[Forum: ([^\]]+)\]-\[User: ([^\]]+)\]-\[Link: ([^\]]+)\].*$/);
+                if (!match) return null;
+                
+                const title = match[1];
+                const forum = match[2];
+                const username = match[3];
+                const link = match[4];
+
+                const newMessage = `Created a new post under: <a href="${link}">${title}</a> in ${forum}`;
 
                 return {
                     username: username,
@@ -410,7 +432,7 @@
 
             enabled: true,
             handler: function (msg) {
-                const match = msg.text.match(/^\[New-Poll]-\[([^\]]+)\]-\[Vote: ([^\]]+)\]-\[Topic: ([^\]]+)\].*$/);
+                const match = msg.text.match(/^\[New-Poll]-\[(.+)\]-\[Vote: ([^\]]+)\]-\[Topic: ([^\]]+)\].*$/);
                 if (!match) return null;
 
                 const title = match[1];
@@ -422,11 +444,346 @@
                 return {
                     username: 'New-Poll ❓',
                     newMessage: newMessage,
+                    prefix: "(",
+                    suffix: ")",
+                };
+            }
+        },
+        // DP Mod Logs
+        {
+            // Format: [USER]-[Name: name]-[Link: link]
+            // Used at: DP
+
+            enabled: true,
+            handler: function (msg) {
+                const match = msg.text.match(/^\[USER]-\[Name: (.+)\]-\[Link: ([^\]]+)\].*$/);
+                if (!match) return null;
+
+                const name = match[1];
+                const link = match[2];
+
+                const newMessage = `Joined DarkPeers - <a href="${link}" target="_blank" rel="noopener noreferrer" class="link">${link}</a>.`;
+
+                return {
+                    username: name,
+                    newMessage: newMessage,
                     prefix: "(@",
                     suffix: ")",
                 };
             }
-        }
+        },
+        {
+            // Format: [New-Request|Torrent-Comment]-[User: name]-[Torrent: link]-[Link: Link]
+            // Used at: DP
+
+            enabled: true,
+            handler: function (msg) {
+                const match = msg.text.match(/^\[New-(Request|Torrent)-Comment\]-\[User: (.+)\]-\[Torrent: ([^\]]+)\]-\[Link: ([^\]]+)\].*$/);
+                if (!match) return null;
+
+                const type = match[1];
+                const name = match[2];
+                const torrent = match[3];
+                const link = match[4];
+
+                const newMessage = `Left a comment on a ${type.toLowerCase()}: <a href="${link}" target="_blank" rel="noopener noreferrer" class="link">${torrent}</a>`;
+
+                return {
+                    username: name,
+                    newMessage: newMessage,
+                    prefix: "(@",
+                    suffix: ")",
+                };
+            }
+        },
+        {
+            // Format: [Request-Approved]-[Name: name]-[Category: category]-[Type: type]-[User: user]-[Link: link]
+            // Used at: DP
+
+            enabled: true,
+            handler: function (msg) {
+                const match = msg.text.match(/^\[Request-Approved\]-\[Name: (.+)\]-\[Category: ([^\]]+)\]-\[Type: ([^\]]+)\]-\[User: ([^\]]+)\]-\[Link: ([^\]]+)\].*$/);
+                if (!match) return null;
+
+                const title = match[1];
+                const category = match[2];
+                const type = match[3];
+                const name = match[4];
+                const link = match[5];
+
+                const newMessage = `${name}'s fulfillment has been approved for request <a href="${link}" target="_blank" rel="noopener noreferrer" class="link">${title}</a>`;
+
+                return {
+                    username: "Request ✅",
+                    newMessage: newMessage,
+                    prefix: "(",
+                    suffix: ")",
+                };
+            }
+        },
+        {
+            // Format: [New-Request|Torrent-Comment]-[User: name]-[Torrent: link]-[Link: Link]
+            // Used at: DP
+
+            enabled: true,
+            handler: function (msg) {
+                const match = msg.text.match(/^\[New-(Request|Torrent)-Comment\]-\[User: (.+)\]-\[Torrent: ([^\]]+)\]-\[Link: ([^\]]+)\].*$/);
+                if (!match) return null;
+
+                const type = match[1];
+                const name = match[2];
+                const torrent = match[3];
+                const link = match[4];
+
+                const newMessage = `Left a comment on a ${type.toLowerCase()}: <a href="${link}" target="_blank" rel="noopener noreferrer" class="link">${torrent}</a>`;
+
+                return {
+                    username: name,
+                    newMessage: newMessage,
+                    prefix: "(@",
+                    suffix: ")",
+                };
+            }
+        },
+        {
+            // Format: [Warning-Cleaned]-[User: name]-[Price: amount]-[Link: link]
+            // Used at: DP
+
+            enabled: true,
+            handler: function (msg) {
+                const match = msg.text.match(/^\[Warning-Cleaned\]-\[User: (.+)\]-\[Price: ([^\]]+)\]-\[Link: ([^\]]+)\].*$/);
+                if (!match) return null;
+
+                const name = match[1];
+                const cost = match[2];
+                const link = match[3];
+
+                const newMessage = `Cleared a warning for ${cost} BON - <a href="${link}" target="_blank" rel="noopener noreferrer" class="link">${link}</a>`;
+
+                return {
+                    username: name,
+                    newMessage: newMessage,
+                    prefix: "(@",
+                    suffix: ")",
+                };
+            }
+        },
+        {
+            // Format: [Approved|Postponed|Rejected-Torrent-Moderation]-[Name: name]-[Torrent: link]-[Link: Link]
+            // Used at: DP
+
+            enabled: true,
+            handler: function (msg) {
+                const match = msg.text.match(/^\[(Approved|Postponed|Rejected)-Torrent-Moderation\]-\[([^\]]+)\]-\[([^\]]+)\]-\[(.+)\]-\[Size: (.+)\]-\[User: (.+)\]-\[Link: ([^\]]+)\].*$/);
+                if (!match) return null;
+
+                const action = match[1];
+                const category = match[2];
+                const type = match[3];
+                const title = match[4];
+                const size = match[5];
+                const moderator = match[6];
+                const link = match[7];
+
+                const newMessage = `${action}: <span style="color: #00bcd4;">[${type}]</span> ${title} <strong>(${size})</strong> - <a href="${link}" target="_blank" rel="noopener noreferrer" class="link">${link}</a>`;
+
+                return {
+                    username: moderator,
+                    newMessage: newMessage,
+                    prefix: "(@",
+                    suffix: ")",
+                };
+            }
+        },
+        {
+            // Format: [New-Torrent-Moderation]-[Name: name]-[Torrent: link]-[Link: Link]
+            // Used at: DP
+
+            enabled: true,
+            handler: function (msg) {
+                const match = msg.text.match(/^\[New-Torrent-Moderation\]-\[([^\]]+)\]-\[([^\]]+)\]-\[(.+)\]-\[Size: (.+)\]-\[Link: ([^\]]+)\].*$/);
+                if (!match) return null;
+
+                const category = match[1];
+                const catEmojis = {
+                    'Movies': '🎬',
+                    'TV': '📺',
+                    'Games': '🎮',
+                    'Music': '🎵',
+                    'Applications': '💾',
+                    'Books': '📚',
+                    'XXX': '🔞'
+                };
+                const emoji = catEmojis[category] || '📁';
+
+                const type = match[2];
+                const title = match[3];
+                const size = match[4];
+                const link = match[5];
+
+                const newMessage = `<span style="color: #00bcd4;">[${type}]</span> ${title} <strong>(${size})</strong> - <a href="${link}" target="_blank" rel="noopener noreferrer" class="link">${link}</a>`;
+
+                return {
+                    username: `New-Pending ${emoji}`,
+                    newMessage: newMessage,
+                    prefix: "(",
+                    suffix: ")",
+                };
+            }
+        },
+        {
+            // Format: [New-Ticket]-[Priority: priority]-[Category: category]-[User: user]-[Subject: subject]-[Link: link]
+            // Used at: DP
+
+            enabled: true,
+            handler: function (msg) {
+                const match = msg.text.match(/^\[New-Ticket\]-\[Priority: ([^\]]+)\]-\[Category: ([^\]]+)\]-\[User: ([^\]]+)\]-\[Subject: (.+)\]-\[Link: ([^\]]+)\].*$/);
+                if (!match) return null;
+
+                const priority = match[1];
+                const category = match[2];
+                const user = match[3];
+                const title = match[4];
+                const link = match[5];
+
+                const newMessage = `Created an new ticket: <a href="${link}" target="_blank" rel="noopener noreferrer" class="link">${title}</a> <b>[${priority}]</b> <b>(${category})</b>`;
+
+                return {
+                    username: user,
+                    newMessage: newMessage,
+                    prefix: "(@",
+                    suffix: ")",
+                };
+            }
+        },
+        {
+            // Format: [New-Ticket-(Assignee|Comment)]-[Priority: priority]-[Category: category]-[User: user]-[Subject: subject]-[Responsible: responsible]-[Link: link]
+            // Used at: DP
+
+            enabled: true,
+            handler: function (msg) {
+                const match = msg.text.match(/^\[New-Ticket-(Assignee|Comment)\]-\[Priority: ([^\]]+)\]-\[Category: ([^\]]+)\]-\[User: (.+)\]-\[Subject: ([^\]]+)\]-\[Responsible: (.+)\]-\[Link: ([^\]]+)\].*$/);
+                if (!match) return null;
+
+                const type = match[1];
+                const priority = match[2];
+                const category = match[3];
+                const user = match[4];
+                const title = match[5];
+                const responsible = match[6];
+                const link = match[7];
+
+                const start = type === 'Assignee' ? 'Was assigned to' : 'Commented on';
+
+                const newMessage = `${start} ticket: <a href="${link}" target="_blank" rel="noopener noreferrer" class="link">${title}</a> <b>[${priority}]</b>`;
+
+                return {
+                    username: responsible,
+                    newMessage: newMessage,
+                    prefix: "(@",
+                    suffix: ")",
+                };
+            }
+        },
+        {
+            // Format: [Torrent-Deleted]-[Title: title]-[User: user]
+            // Used at: DP
+
+            enabled: true,
+            handler: function (msg) {
+                const match = msg.text.match(/^\[Torrent-Deleted\]-\[(.+)\]-\[User: ([^\]]+)\].*$/);
+                if (!match) return null;
+
+                const title = match[1];
+                const user = match[2];
+
+                const newMessage = `Deleted: ${title}`;
+
+                return {
+                    username: user,
+                    newMessage: newMessage,
+                    prefix: "(@",
+                    suffix: ")",
+                };
+            }
+        },
+        {
+            // Format: [New-Report]-[Type: type]-[Reporter: user]-[Title: title]-[Link: link]
+            // Used at: DP
+
+            enabled: true,
+            handler: function (msg) {
+                const match = msg.text.match(/^\[New-Report\]-\[Type: ([^\]]+)\]-\[Reporter: ([^\]]+)\]-\[Title: (.+)\]-\[Link: ([^\]]+)\].*$/);
+                if (!match) return null;
+
+                const type = match[1];
+                const user = match[2];
+                const title = match[3];
+                const link = match[4];
+
+                const newMessage = `Reported a ${type.toLowerCase()}: <a href="${link}" target="_blank" rel="noopener noreferrer" class="link">${title}</a>`;
+
+                return {
+                    username: user,
+                    newMessage: newMessage,
+                    prefix: "(@",
+                    suffix: ")",
+                };
+            }
+        },
+        {
+            // Format: User: name (group) - D: downloaded - U: uploaded - Ratio: ratio - Warnings: warnings - link
+            // Used at: DP
+
+            enabled: true,
+            handler: function (msg) {
+                const match = msg.text.match(/^User: (.+) \((.+)\) - D:(.+) - U: (.+) - Ratio: (.+) - Warnings: (.+) - (.+)$/);
+                if (!match) return null;
+
+                const user = match[1];
+                const group = match[2];
+                const downloaded = match[3];
+                const uploaded = match[4];
+                const ratio = match[5];
+                const warnings = match[6];
+                const link = match[7];
+
+                const newMessage = `<div style="border:1px solid #444; border-radius:6px; padding:8px; font-family:Arial,Helvetica,sans-serif; font-size:12px; max-width:300px; background:#111; color:#eee;"><div style="font-weight:bold; font-size:13px; margin-bottom:4px; display:flex; justify-content:space-between;"><span style="color:#6cf;">👤 ${user}</span><a href="${link}" style="color:#6cf; text-decoration:none;">View profile →</a></div><div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>Group:</span><span style="color:#9f9;">${group}</span></div><div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>Downloaded:</span><span>${downloaded}</span></div><div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>Uploaded:</span><span>${uploaded}</span></div><div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>Ratio:</span><span style="font-weight:bold;">${ratio}</span></div><div style="display:flex; justify-content:space-between; margin-bottom:6px;"><span>Warnings:</span><span style="color:${warnings > 0 ? '#f66' : '#9f9'};">${warnings}</span></div></div>`
+
+                return {
+                    username: user,
+                    newMessage: newMessage,
+                    prefix: "(@",
+                    suffix: ")",
+                };
+            }
+        },
+        {
+            // Format: User: name (group) - D: downloaded - U: uploaded - Ratio: ratio - link
+            // Used at: DP
+
+            enabled: true,
+            handler: function (msg) {
+                const match = msg.text.match(/^User: (.+) \((.+)\) - D:(.+) - U: (.+) - Ratio: (.+) - (.+)$/);
+                if (!match) return null;
+
+                const user = match[1];
+                const group = match[2];
+                const downloaded = match[3];
+                const uploaded = match[4];
+                const ratio = match[5];
+                const link = match[6];
+
+                const newMessage = `<div style="border:1px solid #444; border-radius:6px; padding:8px; font-family:Arial,Helvetica,sans-serif; font-size:12px; max-width:300px; background:#111; color:#eee;"><div style="font-weight:bold; font-size:13px; margin-bottom:4px; display:flex; justify-content:space-between;"><span style="color:#6cf;">👤 ${user}</span><a href="${link}" style="color:#6cf; text-decoration:none;">View profile →</a></div><div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>Group:</span><span style="color:#9f9;">${group}</span></div><div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>Downloaded:</span><span>${downloaded}</span></div><div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>Uploaded:</span><span>${uploaded}</span></div><div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>Ratio:</span><span style="font-weight:bold;">${ratio}</span></div></div>`
+
+                return {
+                    username: user,
+                    newMessage: newMessage,
+                    prefix: "(@",
+                    suffix: ")",
+                };
+            }
+        },
     ];
 
     // --- STOP EDITING STUFF HERE ---
