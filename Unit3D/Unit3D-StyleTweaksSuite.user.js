@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            Unit3D – Style Tweaks Suite
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         1.3.2
+// @version         1.3.3
 // @description     A refined and expanded style customization suite for Unit3D-based tracker sites. Features clean, modular code, improved performance, and flexible global or site-specific configuration. Includes optional festive branding, particle effects, alert and notification enhancements, BON display tweaks, blocked alert control, and various UI refinements.
 //
 // @author          ThatNeoByte
@@ -27,6 +27,9 @@
 // @include         *://oldtoons.world/*
 // @include         *://upscalevault.com/*
 // @include         *://itatorrents.xyz/*
+// @include         *://hd-united.vn/*
+// @include         *://luminarr.me/*
+// @include         *://rotorrent.info/*
 // @include         *://onlyencodes.cc/*
 // @exclude         *://onlyencodes.cc/widgets/*
 //
@@ -61,6 +64,7 @@
         avatar_enabled: true,
         pms_enabled: true,
         notes_enabled: true,
+        staff_enabled: true,
         particle_enabled: true,
         particle_density: 3,
         particle_character: '❅',
@@ -81,6 +85,7 @@
         avatar: 'avatar_enabled',
         pms: 'pms_enabled',
         notes: 'notes_enabled',
+        staff: 'staff_enabled',
         particle: 'particle_enabled',
         particleDensity: 'particle_density',
         particleCharacter: 'particle_character',
@@ -106,21 +111,22 @@
         { key: keys.bon,                    type: "checkbox",   label: "Enable Mobile BON Display",     feature: "bon" },
         { key: keys.hideSparkles,           type: "checkbox",   label: "Hide Donor Sparkles",           feature: "sparkles" },
 
-        { section: "Particle Options",      collapsed: true },
+        { section: "Particle Options",      collapsed: true,    features: ["particles"] },
         { key: keys.particle,               type: "checkbox",   label: "Enable Falling Particles",      feature: "particles" },
         { key: keys.particleDensity,        type: "range",      label: "Particle Density",              feature: "particles", min: 1, max: 5 },
         { key: keys.particleCharacter,      type: "character",  label: "Falling Particle Character",    feature: "particles", reset: true },
 
-        { section: "Alerts",                collapsed: true },
+        { section: "Alerts",                collapsed: true,    features: ["alerts"] },
         { key: keys.pms,                    type: "checkbox",   label: "Enable Private Message Alerts", feature: "alerts" },
         { key: keys.notes,                  type: "checkbox",   label: "Enable Bell Alerts",            feature: "alerts" },
+        { key: keys.staff,                  type: "checkbox",   label: "Enable Staff Alerts",           feature: "alerts" },
         { key: keys.alertColor,             type: "color",      label: "Alert Color",                   feature: "alerts", reset: true },
 
-        { section: "Blocked Banner Alerts", collapsed: true },
+        { section: "Blocked Banner Alerts", collapsed: true,    features: ["banners", "scrolling_banners"] },
         { key: keys.bannerEnabled,          type: "checkbox",   label: "Enable scrolling banner",       feature: "scrolling_banners" },
         { key: keys.bannerSpeedPxPerSec,    type: "range",      label: "Scrolling Banner Speed",        feature: "scrolling_banners", min: 0, max: 100, step: 5 },
-        { key: keys.hideBlockedAlerts,      type: "checkbox",   label: "Hide Blocked Banner Alerts",    feature: "blocked_banners" },
-        { key: keys.blockedAlertLines,      type: "alertLines", label: "Blocked Lines",                 feature: "blocked_banners" },
+        { key: keys.hideBlockedAlerts,      type: "checkbox",   label: "Hide Blocked Banner Alerts",    feature: "banners" },
+        { key: keys.blockedAlertLines,      type: "alertLines", label: "Blocked Lines",                 feature: "banners" },
     ];
 
     const SITE_CAPABILITIES = {
@@ -186,6 +192,16 @@
             scrolling_banners: false,
         },
         'itatorrents.xyz': {
+            logo: false,
+        },
+        'rotorrent.info': {
+            logo: false,
+            banners: false,
+        },
+        'luminarr.me': {
+            logo: false,
+        },
+        'hd-united.vn': {
             logo: false,
         }
     };
@@ -323,6 +339,7 @@
 
     // --- FEATURE LOGIC ---
     function initLogoOverride() {
+        if (siteSupports("logo") === false) return;
         const branding = document.querySelector(".top-nav__branding");
         if (!branding) return;
 
@@ -477,12 +494,21 @@
     };
 
     const checkNotifications = () => {
-        if (siteSupports("alerts") === false) return;
+        if (siteSupports("alerts") === false) {
+            document.body.classList.remove('notifications');
+            return;
+        } else {
+            document.body.classList.add('notifications');
+        }
+
         const pmsOn = getSetting(keys.pms);
         const notesOn = getSetting(keys.notes);
+        const staffOn = getSetting(keys.staff);
 
         const inboxLink = document.querySelector('.top-nav--right__icon-link[href*="conversations"]');
         const notesLink = document.querySelector('.top-nav--right__icon-link[href*="notifications"]');
+        const moderationLink = document.querySelector('.top-nav--right__icon-link[href*="moderation"]');
+        const dashboardLink = document.querySelector('.top-nav--right__icon-link[href*="dashboard"]');
 
         let globalAlert = false;
 
@@ -494,19 +520,27 @@
             return false;
         };
 
-        if (pmsOn && isLinkActive(inboxLink)) {
-            inboxLink.classList.add('notification-active');
-            globalAlert = true;
-        } else if (inboxLink) {
-            inboxLink.classList.remove('notification-active');
+        const updateLinkState = (link, isOn) => {
+            if (isOn) {
+                if (link) link.classList.add('hide-notification');
+                if (isLinkActive(link)) {
+                    link.classList.add('notification-active');
+                    globalAlert = true;
+                } else if (link) {
+                    link.classList.remove('notification-active');
+                }
+            } else {
+                if (link) {
+                    link.classList.remove('hide-notification');
+                    link.classList.remove('notification-active');
+                }
+            }
         }
 
-        if (notesOn && isLinkActive(notesLink)) {
-            notesLink.classList.add('notification-active');
-            globalAlert = true;
-        } else if (notesLink) {
-            notesLink.classList.remove('notification-active');
-        }
+        updateLinkState(inboxLink, pmsOn);
+        updateLinkState(notesLink, notesOn);
+        updateLinkState(moderationLink, staffOn);
+        updateLinkState(dashboardLink, staffOn);
 
         const menuButton = document.querySelector('.top-nav__toggle');
         if (menuButton) {
@@ -519,11 +553,11 @@
     };
 
     const updatePermanentAlerts = () => {
-        if (siteSupports("banners") === false) return;
         const hidePermanentAlertsOn = getSetting(keys.hideBlockedAlerts);
         const alertLines = getSetting(keys.blockedAlertLines);
 
         document.querySelectorAll(".alerts .alert").forEach(alert => {
+            if (siteSupports("banners") === false) { alert.style.display = "grid"; return; }
             const text = alert.textContent.toLowerCase();
             // Check if any blocked phrase appears in this alert
             if (alertLines.some(unwantedAlert => text.includes(unwantedAlert.toLowerCase()))) {
@@ -713,6 +747,19 @@
         // Render basic settings
         settingsSchema.forEach(item => {
             if (item.section) {
+                if (item.features) {
+                    let should_add = false;
+                    for (let capability in (item.features || [])) {
+                        if (siteSupports(item.features[capability])) {
+                            should_add = true;
+                            break;
+                        }
+                    }
+                    console.log("Section ", item.section, " supported: ", should_add);
+                    if (!should_add) {
+                        return;
+                    }
+                }
                 currentSection = document.createElement("div");
                 currentSection.className = "st-section";
 
@@ -1424,7 +1471,7 @@
         }
 
         /* 4. Notification Cleanup */
-        .top-nav--right__icon-link svg {
+        body[class*="notifications"] .hide-notification svg {
             display: none !important;
         }
 
@@ -1441,7 +1488,7 @@
             100% { color: #ffffff; text-shadow: 0 0 5px var(--alertColor); }
         }
 
-        .notification-active i {
+        body[class*="notifications"] .notification-active i {
             animation: text-beat 1s infinite ease-in-out !important;
         }
 
