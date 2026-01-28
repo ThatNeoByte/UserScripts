@@ -161,6 +161,22 @@
         return text.substring(0, messageStart);
     }
 
+    function formatBytes(bytes) {
+        const units = ["B", "KB", "MB", "GB", "TB"];
+        let value = bytes;
+        let unitIndex = 0;
+
+        while (
+            unitIndex < units.length - 1 &&
+            value / 1000 >= 0.9
+        ) {
+            value /= 1000;
+            unitIndex++;
+        }
+
+        return `${value.toFixed(2)} ${units[unitIndex]}`;
+    }
+
     const HANDLERS = [
         {
             // Format: [SB] Nickname: Message or [ SB ] (Nickname): Message
