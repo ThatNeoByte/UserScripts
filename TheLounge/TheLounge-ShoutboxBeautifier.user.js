@@ -90,15 +90,14 @@
             '@Willie',          // BHD
             '@WALL-E',          // RFX
             'BBot', '@BBot',    // HHD
-            '&darkpeers',       // DP
-            '@darkpeers',       // DP mod logs
+            /.?darkpeers/,      // DP
             'Bot',              // LST
             '+Mellos',          // HUNO (Discord)
             /.+?-web/,          // HUNO (Shoutbox)
             '&Sauron',          // ANT
             '+bridgebot',       // OE+
-            'Luminarr',         // Luminarr
-            '~Announce',        // Luminarr
+            'Luminarr',         // LUME
+            '~Announce',        // LUME
         ],
         USE_AUTOCOMPLETE: true, // Enable autocomplete for usernames
         USE_DECORATORS: true,   // Enable username decorators
