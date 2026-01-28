@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            The Lounge – Inline Image Preview
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         1.1.0
+// @version         1.1.1
 // @description     Automatically converts image URLs in chat into inline previews using wsrv.nl.
 // @author          ThatNeoByte
 // @license         MIT
@@ -18,6 +18,7 @@
 
 (() => {
     const IMG_EXT = /\.(png|jpg|jpeg|gif|webp|bmp|svg)$/i;
+    const DISPLAY_DOMAINS = [/^https?\:\/\/i\.seedpool\.org\/s\//, /^https?\:\/\/external-content\.duckduckgo\.com\/iu\//];
 
     function cdn(url) {
         return `https://wsrv.nl/?n=-1&w=500&h=200&url=${encodeURIComponent(url)}`;
@@ -36,7 +37,7 @@
         // Skip already-converted links
         if (a.querySelector("img")) return;
 
-        if (IMG_EXT.test(url)) {
+        if (DISPLAY_DOMAINS.some((re) => re.test(url)) || IMG_EXT.test(url)) {
             const span = wrapElement("span", a);
             span.style.display = "block";
 

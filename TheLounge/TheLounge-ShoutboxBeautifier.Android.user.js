@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            The Lounge – Shoutbox Beautifier (Android) (ThatNeoByte Edition)
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         2.7-tnb.3
+// @version         2.7-tnb.4
 // @description     Advanced rework of the original Shoutbox Beautifier for The Lounge. Reformats bridged chatbot messages to appear as native user messages, with extensible handler architecture, decorators, metadata-driven styling, regex matching, preview-safe DOM updates, and expanded network support.
 //
 // @author          spindrift
@@ -1005,8 +1005,12 @@
     const observer = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
             mutation.addedNodes.forEach((node) => {
-                if (node.nodeType === 1 && node.classList.contains('msg')) {
-                    processMessage(node);
+                if (node.nodeType === 1) {
+                    if (node.classList?.contains('msg')) {
+                        processMessage(node);
+                    } else {
+                        node.querySelectorAll?.('.msg').forEach(processMessage);
+                    }
                 }
             });
         });
@@ -1014,32 +1018,29 @@
 
     // Start observing when the chat container is available
     function initializeObserver() {
-        const chatContainer = document.querySelector('#chat');
-        if (chatContainer) {
-            observer.observe(chatContainer, { childList: true, subtree: true });
-            processExistingMessages();
-        } else {
-            setTimeout(initializeObserver, 1000);
-        }
-    }
-
-    // Start monitoring vue router to reinit after viewing settings or editing/adding a new network
-    async function initializeRouterMonitor () {
-        const router = Array.from(document.querySelectorAll('*'))
-                .find(e => e.__vue_app__)?.__vue_app__?.config?.globalProperties?.$router;
-
-        if (router == null) {
-            return setTimeout(initializeRouterMonitor, 1000);
-        }
-        await router.isReady();
-
-        router.afterEach((newRoute, oldRoute) => {
-            if (oldRoute.name === 'RoutedChat' || newRoute.name !== 'RoutedChat') return
-            initializeObserver();
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
         });
     }
 
-    // Start the initialization process
-    initializeRouterMonitor();
+    // // Start monitoring vue router to reinit after viewing settings or editing/adding a new network
+    // async function initializeRouterMonitor () {
+    //     const router = Array.from(document.querySelectorAll('*'))
+    //             .find(e => e.__vue_app__)?.__vue_app__?.config?.globalProperties?.$router;
+
+    //     if (router == null) {
+    //         return setTimeout(initializeRouterMonitor, 1000);
+    //     }
+    //     await router.isReady();
+
+    //     router.afterEach((newRoute, oldRoute) => {
+    //         if (oldRoute.name === 'RoutedChat' || newRoute.name !== 'RoutedChat') return;
+    //         initializeObserver();
+    //     });
+    // }
+
+    // // Start the initialization process
+    // initializeRouterMonitor();
     initializeObserver();
 })();
