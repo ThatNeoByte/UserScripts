@@ -99,6 +99,7 @@
             '&Sauron',          // ANT
             '+bridgebot',       // OE+
             'Luminarr',         // Luminarr
+            '~Announce',        // Luminarr
         ],
         USE_AUTOCOMPLETE: true, // Enable autocomplete for usernames
         USE_DECORATORS: true,   // Enable username decorators
@@ -159,6 +160,22 @@
     function removeAllExceptMessage(text, messageText) {
         const messageStart = text.lastIndexOf(messageText);
         return text.substring(0, messageStart);
+    }
+
+    function formatBytes(bytes) {
+        const units = ["B", "KB", "MB", "GB", "TB"];
+        let value = bytes;
+        let unitIndex = 0;
+
+        while (
+            unitIndex < units.length - 1 &&
+            value / 1000 >= 0.9
+        ) {
+            value /= 1000;
+            unitIndex++;
+        }
+
+        return `${value.toFixed(2)} ${units[unitIndex]}`;
     }
 
     const HANDLERS = [
@@ -782,6 +799,49 @@
                     username: user,
                     newMessage: newMessage,
                     prefix: "(@",
+                    suffix: ")",
+                };
+            }
+        },
+        {
+            // Format: announceType:category:leechType:orign:id:size:time:tmdb|type/resolution|year|title|user
+            // {{.AnnounceTypeEnum}}:{{.CategoryEnum}}:{{.LeechTypeEnum}}:{{.OriginEnum}}:{{.ID}}:{{.SizeBytes}}:{{.UploadTimeUnixEpoch}}:{{.Meta.Tmdb}}|{{.Type}}/{{.Resolution}}|{{.Year}}|{{.Name}}|{{.Uploader}}
+            // Used at: Luminarr
+
+            enabled: true,
+            handler: function (msg) {
+                const match = msg.text.match(/^(\d):(\d):(\d):(\d):(\d+):(\d+):(\d+):(\d+)\|(.+)\/(.*)\|(.*)\|(.+)\|(.+)/);
+                if (!match) return null;
+
+                const announceTypeEnum = match[1];
+                const categoryEnum = match[2];
+                const leechTypeEnum = match[3];
+                const originEnum = match[4];
+                const torrentID = match[5];
+                const sizeBytes = match[6];
+                const uploadTime = match[7];
+                const tmdb = match[8];
+                const type = match[9];
+                const resolution = match[10];
+                const year = match[11];
+                const title = match[12];
+                const uploader = match[13];
+
+
+                const catEmojis = {
+                    '1': '🎬',
+                    '2': '📺',
+                };
+                const emoji = catEmojis[categoryEnum] || '📁';
+
+                const username = `New-upload ${emoji}`;
+
+                const newMessage = `<span style="color: #00bcd4;">[${type}]</span> ${title} <strong>(${formatBytes(sizeBytes)})</strong> By ${uploader} - <a href="https://luminarr.me/torrents/${torrentID}" target="_blank" rel="noopener noreferrer" class="link">https://luminarr.me/torrents/${torrentID}</a>`;
+
+                return {
+                    username: username,
+                    newMessage: newMessage,
+                    prefix: "(",
                     suffix: ")",
                 };
             }
