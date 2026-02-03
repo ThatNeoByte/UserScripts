@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            The Lounge – Shoutbox Beautifier (ThatNeoByte Edition)
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         2.7-tnb.6
+// @version         2.7-tnb.7
 // @description     Advanced rework of the original Shoutbox Beautifier for The Lounge. Reformats bridged chatbot messages to appear as native user messages, with extensible handler architecture, decorators, metadata-driven styling, regex matching, preview-safe DOM updates, and expanded network support.
 //
 // @author          spindrift
@@ -556,6 +556,75 @@
 
                 return {
                     username: name,
+                    newMessage: newMessage,
+                    prefix: "(@",
+                    suffix: ")",
+                };
+            }
+        },
+        {
+            // Format: [New-Article-Comment]-[User: name]-[Article: link]-[Link: Link]
+            // Used at: DP
+
+            enabled: true,
+            handler: function (msg) {
+                const match = msg.text.match(/^\[New-Article-Comment\]-\[User: (.+)\]-\[Article: ([^\]]+)\]-\[Link: ([^\]]+)\].*$/);
+                if (!match) return null;
+
+                const name = match[1];
+                const article = match[2];
+                const link = match[3];
+
+                const newMessage = `Left a comment on an article: <a href="${link}" target="_blank" rel="noopener noreferrer" class="link">${article}</a>`;
+
+                return {
+                    username: name,
+                    newMessage: newMessage,
+                    prefix: "(@",
+                    suffix: ")",
+                };
+            }
+        },
+        {
+            // Format: [Request-Deleted-By-Self]-[Name: name]-[User: user]
+            // Used at: DP
+
+            enabled: true,
+            handler: function (msg) {
+                const match = msg.text.match(/^\[Request-Deleted-By-Self\]-\[Name: ([^\]]+)\]-\[User: (.+)\].*$/);
+                if (!match) return null;
+
+                const requestName = match[1];
+                const userName = match[2];
+
+                const newMessage = `Has deleted the request: ${requestName}`;
+
+                return {
+                    username: userName,
+                    newMessage: newMessage,
+                    prefix: "(@",
+                    suffix: ")",
+                };
+            }
+        },
+        {
+            // Format: [Request-Deleted-By-Staff]-[Name: name]-[By: requester]-[User: user]-[Reason: reason]
+            // Used at: DP
+
+            enabled: true,
+            handler: function (msg) {
+                const match = msg.text.match(/^\[Request-Deleted-By-Staff\]-\[Name: ([^\]]+)\]-\[By: ([^\]]+)\]-\[User: (.+)\]-\[Reason: (.+)\].*$/);
+                if (!match) return null;
+
+                const requestName = match[1];
+                const requester = match[2];
+                const staff = match[3];
+                const reason = match[4];
+
+                const newMessage = `Has deleted the request by <a href="https://darkpeers.org/users/${requester}" target="_blank" rel="noopener noreferrer" class="link">${requester}</a>: ${requestName} - Reason: ${reason}`;
+
+                return {
+                    username: staff,
                     newMessage: newMessage,
                     prefix: "(@",
                     suffix: ")",
