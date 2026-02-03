@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            Unit3D – Emoji & Media Picker (ThatNeoByte Edition)
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         1.0.3-tnb.2
+// @version         1.0.3-tnb.3
 // @description     Discord-style emoji, sticker, and GIF picker for Unit3D-based sites. Includes a small patch by ThatNeoByte; original script by ZukoXZoku.
 //
 // @author          ZukoXZoku
@@ -13,8 +13,8 @@
 // @modified-by     ThatNeoByte (minor change)
 //
 // @icon            https://ptpimg.me/91xfz9.gif
-// @updateURL       https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/Unit3D/Unit3D-EmojiMediaPicker.user.js
-// @downloadURL     https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/Unit3D/Unit3D-EmojiMediaPicker.user.js
+// @updateURL       https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/Unit3D/Unit3D-EmojiPanel.user.js
+// @downloadURL     https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/Unit3D/Unit3D-EmojiPanel.user.js
 //
 // @include         *://darkpeers.org/*
 // @include         *://upload.cx/*
