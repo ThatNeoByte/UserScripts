@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            The Lounge – Shoutbox Beautifier (Android) (ThatNeoByte Edition)
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         2.7-tnb.7
+// @version         2.7-tnb.8
 // @description     Advanced rework of the original Shoutbox Beautifier for The Lounge. Reformats bridged chatbot messages to appear as native user messages, with extensible handler architecture, decorators, metadata-driven styling, regex matching, preview-safe DOM updates, and expanded network support.
 //
 // @author          spindrift
@@ -96,7 +96,7 @@
             /.+?-web/,          // HUNO (Shoutbox)
             '&Sauron',          // ANT
             '+bridgebot',       // OE+
-            'Luminarr',         // LUME
+            '+Luminarr',         // LUME
             '~Announce',        // LUME
         ],
         USE_AUTOCOMPLETE: true, // Enable autocomplete for usernames
@@ -480,6 +480,28 @@
                 const link = match[2];
 
                 const newMessage = `Joined DarkPeers - <a href="${link}" target="_blank" rel="noopener noreferrer" class="link">${link}</a>.`;
+
+                return {
+                    username: name,
+                    newMessage: newMessage,
+                    prefix: "(@",
+                    suffix: ")",
+                };
+            }
+        },
+        {
+            // Format: [USER]-[Enabled]-[User: name]-[Link: link]
+            // Used at: DP
+
+            enabled: true,
+            handler: function (msg) {
+                const match = msg.text.match(/^\[USER]-\[Enabled]-\[User: (.+)\]-\[Link: ([^\]]+)\].*$/);
+                if (!match) return null;
+
+                const name = match[1];
+                const link = match[2];
+
+                const newMessage = `Has been enabled - <a href="${link}" target="_blank" rel="noopener noreferrer" class="link">${link}</a>.`;
 
                 return {
                     username: name,
