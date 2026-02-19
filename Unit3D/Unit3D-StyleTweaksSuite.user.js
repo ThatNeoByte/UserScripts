@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            Unit3D – Style Tweaks Suite
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         1.3.4
+// @version         1.3.5
 // @description     A refined and expanded style customization suite for Unit3D-based tracker sites. Features clean, modular code, improved performance, and flexible global or site-specific configuration. Includes optional festive branding, particle effects, alert and notification enhancements, BON display tweaks, blocked alert control, and various UI refinements.
 //
 // @author          ThatNeoByte
@@ -159,6 +159,7 @@
         },
         'onlyencodes.cc': {
             logo: false,
+            scrolling_banners: false,
         },
         'www.nordicq.org': {
             logo: false,
