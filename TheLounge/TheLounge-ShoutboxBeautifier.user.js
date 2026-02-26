@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            The Lounge – Shoutbox Beautifier (ThatNeoByte Edition)
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         2.7-tnb.8
+// @version         2.7-tnb.9
 // @description     Advanced rework of the original Shoutbox Beautifier for The Lounge. Reformats bridged chatbot messages to appear as native user messages, with extensible handler architecture, decorators, metadata-driven styling, regex matching, preview-safe DOM updates, and expanded network support.
 //
 // @author          spindrift
@@ -96,8 +96,9 @@
             /.+?-web/,          // HUNO (Shoutbox)
             '&Sauron',          // ANT
             '+bridgebot',       // OE+
-            '+Luminarr',         // LUME
+            '+Luminarr',        // LUME
             '~Announce',        // LUME
+            '!BBot',            // HHD
         ],
         USE_AUTOCOMPLETE: true, // Enable autocomplete for usernames
         USE_DECORATORS: true,   // Enable username decorators
