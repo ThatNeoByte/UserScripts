@@ -18,6 +18,10 @@
 // @updateURL       https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/TheLounge/TheLounge-ShoutboxBeautifier.Android.user.js
 // @downloadURL     https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/TheLounge/TheLounge-ShoutboxBeautifier.Android.user.js
 //
+// @require         https://cdn.jsdelivr.net/npm/dompurify@3.3.1/dist/purify.min.js
+// @require         https://cdn.jsdelivr.net/npm/@bbob/html@4.3.1/dist/index.min.js
+// @require         https://cdn.jsdelivr.net/npm/@bbob/preset-html5@4.3.1/dist/index.min.js
+//
 // @run-at          document-end
 // ==/UserScript==
 
@@ -1150,6 +1154,14 @@
         if ( newMessage) {
             contentSpan.innerHTML = newMessage;
         }
+
+        // Remove any and all img BBCode tags, as they break
+        const input = contentSpan.innerHTML.replace(/\[img(?:=[^\]]+)?\]|\[\/img\]/gi, '');
+
+        // parse BBCode that might have been send
+        const html = BbobHtml.default(input, BbobPresetHTML5.default());
+        const cleanHtml = DOMPurify.sanitize(html);
+        contentSpan.innerHTML = cleanHtml;
     }
 
     // Create and start observing DOM changes

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            The Lounge – Shoutbox Beautifier (ThatNeoByte Edition)
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         2.7-tnb.9
+// @version         2.7-tnb.10
 // @description     Advanced rework of the original Shoutbox Beautifier for The Lounge. Reformats bridged chatbot messages to appear as native user messages, with extensible handler architecture, decorators, metadata-driven styling, regex matching, preview-safe DOM updates, and expanded network support.
 //
 // @author          spindrift
@@ -12,11 +12,15 @@
 // @credits         Additional contributions by fulcrum, marks, sparrow, AnabolicsAnonymous, FortKnox1337, cmd430
 // @source          https://aither.cc/forums/topics/3874
 //
-// @match           https://irc.thatneobyte.com/*   
+// @match           https://irc.thatneobyte.com/*
 //
 // @icon            https://thelounge.chat/favicon.ico
 // @updateURL       https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/TheLounge/TheLounge-ShoutboxBeautifier.user.js
 // @downloadURL     https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/TheLounge/TheLounge-ShoutboxBeautifier.user.js
+//
+// @require         https://cdn.jsdelivr.net/npm/dompurify@3.3.1/dist/purify.min.js
+// @require         https://cdn.jsdelivr.net/npm/@bbob/html@4.3.1/dist/index.min.js
+// @require         https://cdn.jsdelivr.net/npm/@bbob/preset-html5@4.3.1/dist/index.min.js
 //
 // @run-at          document-end
 // ==/UserScript==
@@ -428,7 +432,7 @@
             handler: function (msg) {
                 const match = msg.text.match(/^\[New-Post]-\[Name: (.+)\]-\[Forum: ([^\]]+)\]-\[User: ([^\]]+)\]-\[Link: ([^\]]+)\].*$/);
                 if (!match) return null;
-                
+
                 const title = match[1];
                 const forum = match[2];
                 const username = match[3];
@@ -1181,7 +1185,6 @@
 
     // Called by the MutationObserver for each new message
     function processMessage(messageElement) {
-
         // Removes join/quit messages, if configured
         // If you'd like to do this in pure CSS instead, use:
         // div[data-type=join], div[data-type=quit], div[data-type=condensed] { display: none !important; }
@@ -1264,9 +1267,17 @@
         }
 
         // If handler created a completely new message, replace content
-        if ( newMessage) {
+        if (newMessage) {
             contentSpan.innerHTML = newMessage;
         }
+
+        // Remove any and all img BBCode tags, as they break
+        const input = contentSpan.innerHTML.replace(/\[img(?:=[^\]]+)?\]|\[\/img\]/gi, '');
+
+        // parse BBCode that might have been send
+        const html = BbobHtml.default(input, BbobPresetHTML5.default());
+        const cleanHtml = DOMPurify.sanitize(html);
+        contentSpan.innerHTML = cleanHtml;
     }
 
     // Create and start observing DOM changes
@@ -1292,23 +1303,5 @@
         });
     }
 
-    // // Start monitoring vue router to reinit after viewing settings or editing/adding a new network
-    // async function initializeRouterMonitor () {
-    //     const router = Array.from(document.querySelectorAll('*'))
-    //             .find(e => e.__vue_app__)?.__vue_app__?.config?.globalProperties?.$router;
-
-    //     if (router == null) {
-    //         return setTimeout(initializeRouterMonitor, 1000);
-    //     }
-    //     await router.isReady();
-
-    //     router.afterEach((newRoute, oldRoute) => {
-    //         if (oldRoute.name === 'RoutedChat' || newRoute.name !== 'RoutedChat') return;
-    //         initializeObserver();
-    //     });
-    // }
-
-    // // Start the initialization process
-    // initializeRouterMonitor();
     initializeObserver();
 })();
