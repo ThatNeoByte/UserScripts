@@ -344,9 +344,11 @@
             const results = extractModerationActions();
             const section = MakeModerationSection(results)
             const auditPanel = getTorrentPanel('Moderation')
+            if (!auditPanel) return;
             auditPanel.outerHTML += section
         } else {
-            getTorrentPanel("Moderation logs").remove()
+            const panel = getTorrentPanel("Moderation logs");
+            if (panel) panel.remove();
         }
     }
 
