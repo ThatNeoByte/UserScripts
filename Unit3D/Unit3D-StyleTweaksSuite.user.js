@@ -79,6 +79,7 @@
         banner_enabled: true,
         banner_tap_hide_ms: 3000,
         banner_speed_px_per_sec: 50,
+        moderation_log: true,
     };
 
     const keys = {
@@ -98,6 +99,7 @@
         bannerEnabled: 'banner_enabled',
         bannerTapHideMs: 'banner_tap_hide_ms',
         bannerSpeedPxPerSec: 'banner_speed_px_per_sec',
+        moderationLog: "moderation_log",
     };
 
     const sessionKeys = {
@@ -111,6 +113,9 @@
         { key: keys.avatar,                 type: "checkbox",   label: "Enable Christmas Avatar",       feature: "avatar" },
         { key: keys.bon,                    type: "checkbox",   label: "Enable Mobile BON Display",     feature: "bon" },
         { key: keys.hideSparkles,           type: "checkbox",   label: "Hide Donor Sparkles",           feature: "sparkles" },
+
+        { section: "Moderation Tools",      collapsed: true,    features: ["moderation_logs"] },
+        { key: keys.moderationLog,          type: "checkbox",   label: "Enable Moderation Log",         feature: "moderation_logs" },
 
         { section: "Particle Options",      collapsed: true,    features: ["particles"] },
         { key: keys.particle,               type: "checkbox",   label: "Enable Falling Particles",      feature: "particles" },
@@ -329,6 +334,20 @@
         }
 
         renderParticles(amount);
+    }
+
+    const applyModerationLog = () => {
+        const isEnabled = getSetting(keys.moderationLog);
+        
+        if (isEnabled) {
+            if (getTorrentPanel("Moderation logs")) return; // skip if the moderation log is already present
+            const results = extractModerationActions();
+            const section = MakeModerationSection(results)
+            const auditPanel = getTorrentPanel('Moderation')
+            auditPanel.outerHTML += section
+        } else {
+            getTorrentPanel("Moderation logs").remove()
+        }
     }
 
     const updateAlertColor = () => {
@@ -576,6 +595,91 @@
         });
     }
 
+    // --- Moderation Logs ---
+    function getTorrentPanel(name) {
+        const panels = document.querySelectorAll('.panelV2');
+        for (const panel of panels) {
+            const heading = panel.querySelector('.panel__heading');
+            if (!heading) continue;
+            const title = heading.textContent.trim();
+            if (title.includes(name)) {
+                return panel;
+            }
+        }
+        return null;
+    }
+
+    function getModerationStatus(code) {
+        switch (code) {
+            case 0: return 'Unmoderated';
+            case 1: return 'Approved';
+            case 2: return 'Rejected';
+            case 3: return 'Postponed';
+            default: return 'Unknown';
+        }
+    }
+
+    function MakeModerationSection(actions) {
+        var section = `<section class="panelV2" x-data="toggle"><h2 class="panel__heading" style="cursor: pointer" x-on:click="toggle">
+            <i class="fas fa-hammer-war"></i> Moderation logs<i class="fas fa-minus-circle fa-pull-right" x-show="isToggledOff" style="display: none;"></i>
+            <i class="fas fa-plus-circle fa-pull-right" x-show="isToggledOn"></i></h2>
+            <div class="data-table-wrapper" x-show="isToggledOff"><table class="data-table"><thead><tr><th>User</th><th>Action</th><th>Date</th><th>Reason</th></tr></thead><tbody>`;
+        actions.forEach(action => section += CreateModerationEntry(action));
+        section += `</tbody></table></div></section>`
+        return section
+    }
+
+    function CreateModerationEntry(action) {
+        var menu = `<tr><td>${action.moderator_html}</td><td>${action.statusLabel}</td><td>${action.time}</td><td>${action.reason}</td></tr>`;
+        return menu
+    }
+
+    function extractModerationActions() {
+        const panel = getTorrentPanel('Audits');
+        if (!panel) return [];
+
+        const rows = panel.querySelectorAll('tbody tr');
+        const actions = [];
+
+        rows.forEach(row => {
+            const user = row.querySelector('.user-tag__link').outerHTML
+            const actionType = row.children[1]?.textContent.trim();
+            const time = row.querySelector('time').outerHTML;
+            if (actionType !== 'update') return;
+            const listItems = row.querySelectorAll('li');
+            let statusChange = null;
+            let reason = null;
+            listItems.forEach(li => {
+                const text = li.innerText;
+                const statusMatch = text.match(/status:\s*(\d+)\s*→\s*(\d+)/);
+                if (statusMatch) {
+                    statusChange = {
+                        from: parseInt(statusMatch[1]),
+                        to: parseInt(statusMatch[2])
+                    };
+                }
+                if (text.includes('moderated_reason:')) {
+                    const parts = text.split('→');
+                    if (parts.length > 1) {
+                        reason = parts[1].trim();
+                    }
+                }
+            });
+            if (!statusChange) return;
+            if ([1, 2, 3].includes(statusChange.to)) {
+                actions.push({
+                    moderator_html: user,
+                    time,
+                    status: statusChange.to,
+                    statusLabel: getModerationStatus(statusChange.to),
+                    reason
+                });
+            }
+        });
+        return actions;
+    }
+
+
     // --- Configuration Overlay ---
     function openConfigurationOverlay() {
         if (document.getElementById("st-config-overlay")) return;
@@ -668,6 +772,7 @@
         applySparkleState();
         applyParticleState();
         applyParticleDensity();
+        applyModerationLog();
         updateBonDisplay();
         updatePermanentAlerts();
         updateAlertColor();
@@ -1929,6 +2034,7 @@
         applySparkleState();
         applyParticleState();
         applyParticleDensity();
+        applyModerationLog();
     }
 
     window.addEventListener('DOMContentLoaded', () => {
@@ -1938,6 +2044,7 @@
         applySparkleState();
         applyParticleState();
         applyParticleDensity();
+        applyModerationLog();
         initConfigurationButton();
         bannerInit();
         mainLoop();
