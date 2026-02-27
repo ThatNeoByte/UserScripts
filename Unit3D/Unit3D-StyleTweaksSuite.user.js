@@ -343,9 +343,10 @@
             if (getTorrentPanel("Moderation logs")) return; // skip if the moderation log is already present
             const results = extractModerationActions();
             const section = MakeModerationSection(results)
-            const auditPanel = getTorrentPanel('Moderation')
-            if (!auditPanel) return;
-            auditPanel.outerHTML += section
+            const ModerationPanel = getTorrentPanel('Moderation')
+            const AduitPanel = getTorrentPanel('Audits')
+            if (!ModerationPanel || !AduitPanel) return;
+            ModerationPanel.outerHTML += section
         } else {
             const panel = getTorrentPanel("Moderation logs");
             if (panel) panel.remove();
