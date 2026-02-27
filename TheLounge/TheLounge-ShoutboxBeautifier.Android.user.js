@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            The Lounge – Shoutbox Beautifier (Android) (ThatNeoByte Edition)
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         2.7-tnb.10
+// @version         2.7-tnb.11
 // @description     Advanced rework of the original Shoutbox Beautifier for The Lounge. Reformats bridged chatbot messages to appear as native user messages, with extensible handler architecture, decorators, metadata-driven styling, regex matching, preview-safe DOM updates, and expanded network support.
 //
 // @author          spindrift
@@ -1150,18 +1150,33 @@
             removePrefix(contentSpan, prefixToRemove);
         }
 
-        // If handler created a completely new message, replace content
-        if ( newMessage) {
-            contentSpan.innerHTML = newMessage;
-        }
+        // Remove all the lounge created a tags wit hjust it's content
+        var input = contentSpan.innerHTML.replace(/\<a(?:.+)?\>(.*)\<\/a\>/gi, '[url]$1[/url]');
 
-        // Remove any and all img BBCode tags, as they break
-        const input = contentSpan.innerHTML.replace(/\[img(?:=[^\]]+)?\]|\[\/img\]/gi, '');
+        // Replace all img tags with the custom image provider
+        input = input.replace(/\[img(?:=[^\]]+)?\]\[url\](.*)\[\/img\]\[\/url\]/gi, (_, url) => {
+            const img_element = `<img src="https://wsrv.nl/?n=-1&w=500&h=200&url=${encodeURIComponent(url)}" style="max-width: 500px; max-height: 200px; border-radius: 6px; margin-top: 4px;"></img>`
+            return img_element;
+        });
 
         // parse BBCode that might have been send
         const html = BbobHtml.default(input, BbobPresetHTML5.default());
         const cleanHtml = DOMPurify.sanitize(html);
         contentSpan.innerHTML = cleanHtml;
+
+        // Replace all url tags with the lounge default style link
+        contentSpan.querySelectorAll("a").forEach(a => {
+            if (a.target == "_blank") return; // skip already processed
+
+            a.dir = "auto"
+            a.rel = "noopener"
+            a.target = "_blank"
+        });
+
+        // If handler created a completely new message, replace content
+        if (newMessage) {
+            contentSpan.innerHTML = newMessage;
+        }
     }
 
     // Create and start observing DOM changes
@@ -1187,23 +1202,5 @@
         });
     }
 
-    // // Start monitoring vue router to reinit after viewing settings or editing/adding a new network
-    // async function initializeRouterMonitor () {
-    //     const router = Array.from(document.querySelectorAll('*'))
-    //             .find(e => e.__vue_app__)?.__vue_app__?.config?.globalProperties?.$router;
-
-    //     if (router == null) {
-    //         return setTimeout(initializeRouterMonitor, 1000);
-    //     }
-    //     await router.isReady();
-
-    //     router.afterEach((newRoute, oldRoute) => {
-    //         if (oldRoute.name === 'RoutedChat' || newRoute.name !== 'RoutedChat') return;
-    //         initializeObserver();
-    //     });
-    // }
-
-    // // Start the initialization process
-    // initializeRouterMonitor();
     initializeObserver();
 })();
