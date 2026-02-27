@@ -1,19 +1,19 @@
 // ==UserScript==
 // @name            The Lounge – Inline Image Preview
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         1.1.1
-// @description     Automatically converts image URLs in chat into inline previews using wsrv.nl.
+// @version         1.1.2
+// @description     DEPRECATED - Automatically converts image URLs in chat into inline previews using wsrv.nl.
 // @author          ThatNeoByte
 // @license         MIT
 //
 // @match           https://irc.thatneobyte.com/*
 //
 // @icon            https://thelounge.chat/favicon.ico
-// @updateURL       https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/TheLounge/TheLounge-InlineImagePreview.user.js
-// @downloadURL     https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/TheLounge/TheLounge-InlineImagePreview.user.js
 //
 // @run-at          document-end
 // ==/UserScript==
+
+// This script is now deprecated and merged into TheLounge-ShoutboxBeautifier.user.js and TheLounge-ShoutboxBeautifier.Android.user.js. Please use those instead for better maintainability and to avoid code duplication.
 
 
 (() => {

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            The Lounge – Shoutbox Beautifier (Android) (ThatNeoByte Edition)
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         2.7-tnb.11
+// @version         2.7-tnb.12
 // @description     Advanced rework of the original Shoutbox Beautifier for The Lounge. Reformats bridged chatbot messages to appear as native user messages, with extensible handler architecture, decorators, metadata-driven styling, regex matching, preview-safe DOM updates, and expanded network support.
 //
 // @author          spindrift
@@ -110,7 +110,10 @@
         DECORATOR_L: '-',       // Will be prepended to username
         DECORATOR_R: '',        // Will be appended to username
         METADATA: 'SB',         // Default metadata to be inserted into HTML
+        IMG_EXT: /\.(png|jpg|jpeg|gif|webp|bmp|svg)$/i,
+        DISPLAY_DOMAINS: [/^https?\:\/\/i\.seedpool\.org\/s\//, /^https?\:\/\/external-content\.duckduckgo\.com\/iu\//],
     }
+
 
     // FORMAT HANDLERS:
     // Easily add support for new formats, just copy an existing handler and modify it
@@ -1089,7 +1092,15 @@
         const initialUsername = fromSpan ? fromSpan.textContent : '';
 
         // Only parse and reformat if a matcher matches the username
-        if (!initialUsername || !matcherMatches(initialUsername)) return;
+        if (!initialUsername || !matcherMatches(initialUsername)) {
+            // Messag was not send by a bridged user, so we only apply the image previewer to links in the message content
+            const contentSpan = messageElement.querySelector('.content'); // Select the content span
+            if (!contentSpan) return;
+
+            contentSpan.querySelectorAll("a").forEach(convertLink);
+            return;
+        }
+
 
         // Get the channel (from the closest ancestor with data-current-channel)
         const channel = messageElement.closest('[data-current-channel]')?.getAttribute('data-current-channel');
@@ -1150,13 +1161,13 @@
             removePrefix(contentSpan, prefixToRemove);
         }
 
+        // Parse BBCode and convert links/images in the newMessage content
         // Remove all the lounge created a tags wit hjust it's content
         var input = contentSpan.innerHTML.replace(/\<a(?:.+)?\>(.*)\<\/a\>/gi, '[url]$1[/url]');
 
         // Replace all img tags with the custom image provider
-        input = input.replace(/\[img(?:=[^\]]+)?\]\[url\](.*)\[\/img\]\[\/url\]/gi, (_, url) => {
-            const img_element = `<img src="https://wsrv.nl/?n=-1&w=500&h=200&url=${encodeURIComponent(url)}" style="max-width: 500px; max-height: 200px; border-radius: 6px; margin-top: 4px;"></img>`
-            return img_element;
+        input = input.replace(/\[img=?([^\]]+)?\]\[url\](.*)\[\/img\]\[\/url\]/gi, (match, width, url) => {
+            return getImageHTML(url, width);
         });
 
         // parse BBCode that might have been send
@@ -1171,12 +1182,42 @@
             a.dir = "auto"
             a.rel = "noopener"
             a.target = "_blank"
+
+            convertLink(a);
         });
 
         // If handler created a completely new message, replace content
         if (newMessage) {
             contentSpan.innerHTML = newMessage;
         }
+    }
+
+    function wrapElement(wrapperTag, element) {
+            const wrapper = document.createElement(wrapperTag);
+            element.parentNode.insertBefore(wrapper, element);
+            wrapper.appendChild(element);
+            return wrapper;
+        }
+
+    function convertLink(a) {
+        const url = a.href;
+
+        // Skip already-converted links
+        if (a.querySelector("img")) return;
+
+        if (CONFIG.DISPLAY_DOMAINS.some((re) => re.test(url)) || CONFIG.IMG_EXT.test(url)) {
+            const span = wrapElement("span", a);
+            span.style.display = "block";
+
+            // Replace text inside <a> with our <img>
+            a.textContent = "";
+            a.innerHTML = getImageHTML(url);
+        }
+    }
+
+    function getImageHTML(url, width = null) {
+        const widthParam = width ? width : '500';
+        return `<img src="https://wsrv.nl/?n=-1&w=${widthParam}&h=200&url=${encodeURIComponent(url)}" style="max-width: 500px; max-height: 200px; border-radius: 6px; margin-top: 4px;"></img>`
     }
 
     // Create and start observing DOM changes
