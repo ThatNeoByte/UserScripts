@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DarkPeers - ModQ Helper
 // @namespace    https://github.com/ThatNeoByte/UserScripts
-// @version      2.0.0
+// @version      2.0.1
 // @description  Modq helper tool to check for naming and metadata issue with uploaded torrents. Adapted to work for DarkPeers.
 // @author       SOCS (original) | NeoByte (adaptation)
 // @license      MIT
@@ -2155,10 +2155,10 @@
         <h2 class="panel__heading" style="cursor:pointer" x-on:click="isToggledOn = !isToggledOn; isToggledOff = !isToggledOff">
           <i class="fas fa-search"></i>
           Moderation Quick Check
-          <i class="fas fa-plus-circle fa-pull-right" x-show="isToggledOff" style="display:none;"></i>
-          <i class="fas fa-minus-circle fa-pull-right" x-show="isToggledOn"></i>
+          <i class="fas fa-minus-circle fa-pull-right" x-show="isToggledOff" style="display:none;"></i>
+          <i class="fas fa-plus-circle fa-pull-right" x-show="isToggledOn"></i>
         </h2>
-        <div class="panel__body mod-helper-body" x-show="isToggledOn">
+        <div class="panel__body mod-helper-body" x-show="isToggledOff">
     `;
 
     // Core checks
