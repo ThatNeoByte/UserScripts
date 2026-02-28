@@ -162,6 +162,7 @@
         },
         'infinityhd.net': {
             logo: false,
+            scrolling_banners: false,
         },
         'onlyencodes.cc': {
             logo: false,

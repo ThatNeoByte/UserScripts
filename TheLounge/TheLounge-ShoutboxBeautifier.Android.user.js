@@ -111,7 +111,7 @@
         DECORATOR_R: '',        // Will be appended to username
         METADATA: 'SB',         // Default metadata to be inserted into HTML
         IMG_EXT: /\.(png|jpg|jpeg|gif|webp|bmp|svg)$/i,
-        DISPLAY_DOMAINS: [/^https?\:\/\/i\.seedpool\.org\/s\//, /^https?\:\/\/external-content\.duckduckgo\.com\/iu\//],
+        ALWAYS_DISPLAY_DOMAINS: [/^https?\:\/\/i\.seedpool\.org\/s\//, /^https?\:\/\/external-content\.duckduckgo\.com\/iu\//, /^https?\:\/\/onlyimage\.org\/image\//],
         BYPASS_IMG_DOMAINS: [/^https?\:\/\/img\.homiehelpdesk\.net\/share\//],
     }
 
@@ -1206,7 +1206,7 @@
         // Skip already-converted links
         if (a.querySelector("img")) return;
 
-        if (CONFIG.DISPLAY_DOMAINS.some((re) => re.test(url)) || CONFIG.IMG_EXT.test(url)) {
+        if (CONFIG.ALWAYS_DISPLAY_DOMAINS.some((re) => re.test(url)) || CONFIG.IMG_EXT.test(url)) {
             const span = wrapElement("span", a);
             span.style.display = "block";
 
