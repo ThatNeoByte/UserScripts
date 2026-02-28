@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            The Lounge – Shoutbox Beautifier (ThatNeoByte Edition)
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         2.7-tnb.12
+// @version         2.7-tnb.13
 // @description     Advanced rework of the original Shoutbox Beautifier for The Lounge. Reformats bridged chatbot messages to appear as native user messages, with extensible handler architecture, decorators, metadata-driven styling, regex matching, preview-safe DOM updates, and expanded network support.
 //
 // @author          spindrift
@@ -111,7 +111,8 @@
         DECORATOR_R: '',        // Will be appended to username
         METADATA: 'SB',         // Default metadata to be inserted into HTML
         IMG_EXT: /\.(png|jpg|jpeg|gif|webp|bmp|svg)$/i,
-        DISPLAY_DOMAINS: [/^https?\:\/\/i\.seedpool\.org\/s\//, /^https?\:\/\/external-content\.duckduckgo\.com\/iu\//],
+        ALWAYS_DISPLAY_DOMAINS: [/^https?\:\/\/i\.seedpool\.org\/s\//, /^https?\:\/\/external-content\.duckduckgo\.com\/iu\//],
+        BYPASS_IMG_DOMAINS: [/^https?\:\/\/img\.homiehelpdesk\.net\/share\//],
     }
 
     // FORMAT HANDLERS:
@@ -1319,7 +1320,7 @@
         // Skip already-converted links
         if (a.querySelector("img")) return;
 
-        if (CONFIG.DISPLAY_DOMAINS.some((re) => re.test(url)) || CONFIG.IMG_EXT.test(url)) {
+        if (CONFIG.ALWAYS_DISPLAY_DOMAINS.some((re) => re.test(url)) || CONFIG.IMG_EXT.test(url)) {
             const span = wrapElement("span", a);
             span.style.display = "block";
 
@@ -1330,6 +1331,9 @@
     }
 
     function getImageHTML(url, width = null) {
+        if (CONFIG.BYPASS_IMG_DOMAINS.some((re) => re.test(url))) {
+            return `<a href="${url}" dir="auto" target="_blank" rel="noopener">${url}</a>`
+        };
         const widthParam = width ? width : '500';
         return `<img src="https://wsrv.nl/?n=-1&w=${widthParam}&h=200&url=${encodeURIComponent(url)}" style="max-width: 500px; max-height: 200px; border-radius: 6px; margin-top: 4px;"></img>`
     }
