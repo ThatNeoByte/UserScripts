@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            The Lounge – Shoutbox Beautifier (ThatNeoByte Edition)
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         2.7-tnb.13
+// @version         2.7-tnb.14
 // @description     Advanced rework of the original Shoutbox Beautifier for The Lounge. Reformats bridged chatbot messages to appear as native user messages, with extensible handler architecture, decorators, metadata-driven styling, regex matching, preview-safe DOM updates, and expanded network support.
 //
 // @author          spindrift
@@ -112,7 +112,8 @@
         METADATA: 'SB',         // Default metadata to be inserted into HTML
         IMG_EXT: /\.(png|jpg|jpeg|gif|webp|bmp|svg)$/i,
         ALWAYS_DISPLAY_DOMAINS: [/^https?\:\/\/i\.seedpool\.org\/s\//, /^https?\:\/\/external-content\.duckduckgo\.com\/iu\//, /^https?\:\/\/onlyimage\.org\/image\//],
-        BYPASS_IMG_DOMAINS: [/^https?\:\/\/img\.homiehelpdesk\.net\/share\//],
+        BYPASS_EMBED_DOMAINS: [/^https?\:\/\/img\.homiehelpdesk\.net\/share\//],
+        BYPASS_WSRV_DOMAINS: [/^https?:\/\/ptpimg\.me\//]
     }
 
     // FORMAT HANDLERS:
@@ -1331,10 +1332,13 @@
     }
 
     function getImageHTML(url, width = null) {
-        if (CONFIG.BYPASS_IMG_DOMAINS.some((re) => re.test(url))) {
+        const widthParam = width ? width : '500';
+        if (CONFIG.BYPASS_EMBED_DOMAINS.some((re) => re.test(url))) {
             return `<a href="${url}" dir="auto" target="_blank" rel="noopener">${url}</a>`
         };
-        const widthParam = width ? width : '500';
+        if (CONFIG.BYPASS_WSRV_DOMAINS.some((re) => re.test(url))) {
+            return `<img src="${url}" style="width: ${widthParam}px; max-width: 500px; max-height: 200px; border-radius: 6px; margin-top: 4px;"></img>`
+        };
         return `<img src="https://wsrv.nl/?n=-1&w=${widthParam}&h=200&url=${encodeURIComponent(url)}" style="max-width: 500px; max-height: 200px; border-radius: 6px; margin-top: 4px;"></img>`
     }
 
