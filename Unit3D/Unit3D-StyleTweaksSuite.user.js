@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            Unit3D – Style Tweaks Suite
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         1.3.8
+// @version         1.3.9
 // @description     A refined and expanded style customization suite for Unit3D-based tracker sites. Features clean, modular code, improved performance, and flexible global or site-specific configuration. Includes optional festive branding, particle effects, alert and notification enhancements, BON display tweaks, blocked alert control, and various UI refinements.
 //
 // @author          ThatNeoByte
@@ -33,8 +33,13 @@
 // @include         *://onlyencodes.cc/*
 // @exclude         *://onlyencodes.cc/widgets/*
 // @include         *://homiehelpdesk.net/*
+// @include         *://capybarabr.com/*
+// @include         *://fearnopeer.com/*
+// @include         *://reelflix.cc/*
+// @include         *://lst.gg/*
+// @include         *://polishtorrent.top/*
 //
-// @icon            https://i.ibb.co/dsfTvpdv/chrimbo-Avatar.png
+// @icon            https://darkpeers.org/favicon.ico
 // @updateURL       https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/Unit3D/Unit3D-StyleTweaksSuite.user.js
 // @downloadURL     https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/Unit3D/Unit3D-StyleTweaksSuite.user.js
 //
@@ -216,6 +221,21 @@
             logo: false,
             scrolling_banners: false,
         },
+        'capybarabr.com': {
+            logo: false,
+        },
+        'fearnopeer.com': {
+            logo: false,
+        },
+        'reelflix.cc': {
+            logo: false,
+        },
+        'lst.gg': {
+            logo: false,
+        },
+        'polishtorrent.top': {
+            logo: false,
+        },
     };
 
     // --- DATAKEY HELPERS ---
@@ -339,7 +359,7 @@
 
     const applyModerationLog = () => {
         const isEnabled = getSetting(keys.moderationLog);
-        
+
         if (isEnabled) {
             if (getTorrentPanel("Moderation logs")) return; // skip if the moderation log is already present
             const results = extractModerationActions();

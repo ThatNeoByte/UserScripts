@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            Unit3D – Chat Enhancer (ThatNeoByte Edition)
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         2.1.6-tnb.3
+// @version         2.1.6-tnb.4
 // @description     Chat enhancements for Unit3D-based sites. Includes reply, message, gift buttons, BBCode helpers, and a toggle menu. Contains a small patch by ThatNeoByte; original script by ZukoXZoku.
 //
 // @author          ZukoXZoku
@@ -35,7 +35,6 @@
 // @include         *://aither.cc/*
 // @include         *://blutopia.cc/*
 // @include         *://fearnopeer.com/*
-// @include         *://lst.gg/*
 // @include         *://reelflix.cc/*
 // @include         *://homiehelpdesk.net/*
 // @include         *://hd-united.vn/*
@@ -43,6 +42,8 @@
 // @include         *://rotorrent.info/*
 // @include         *://onlyencodes.cc/*
 // @exclude         *://onlyencodes.cc/widgets/*
+// @include         *://capybarabr.com/*
+// @include         *://polishtorrent.top/*
 //
 // @grant           GM_addStyle
 // ==/UserScript==
