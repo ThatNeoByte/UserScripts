@@ -2162,6 +2162,10 @@
                 }; // Fallback to a default color and icon if rank data is missing
         }
 
+        if (user.userclass) {
+            fromSpan.title = user.userclass;
+        }
+
         if (user.rankData.color) {
             fromSpan.style.color = user.rankData.color;
         }
@@ -2276,6 +2280,8 @@
 
         // Handle username related changes if the username has been changed
         if (usernameChanged) {
+            messageElement.setAttribute('data-from', username);
+
             // Add and modify message metadata
             fromSpan.setAttribute('data-name', username);
             fromSpan.setAttribute('data-bridged', metadata); // For CSS targeting
