@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            The Lounge – Shoutbox Beautifier (ThatNeoByte Edition)
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         3.0-tnb.15
+// @version         3.0-tnb.16
 // @description     Advanced rework of the original Shoutbox Beautifier for The Lounge. Reformats bridged chatbot messages to appear as native user messages, with extensible handler architecture, decorators, metadata-driven styling, regex matching, preview-safe DOM updates, and expanded network support. Fetches user details from supported UNIT3D trackers to display profile pictures, role icons, role colors, and custom icons. Note: You must be logged into each tracker in your browser for profile data to load.
 //
 // @author          spindrift
@@ -1692,11 +1692,9 @@
 
                     const beforeRules = extractFaBeforeRules(cssText);
 
-                    if (beforeRules.length > 0) {
-                        await idbSet(codepointCacheKey, beforeRules);
+                    await idbSet(codepointCacheKey, beforeRules);
+                    return beforeRules;
 
-                        return beforeRules;
-                    }
                 } catch (err) {
                     console.warn(`[FA] Failed fetching CSS ${cssUrl}`, err);
                 }
@@ -1926,8 +1924,9 @@
                 withCredentials: true
             });
 
-            if (response.status !== 200) {
-                throw new Error("Not authenticated or failed");
+            if (!(response.status == 200 || response.status == 404 )) {
+                console.error(`Was unable to acces user's: ${username} details returned status code: `, response.status)
+                throw new Error("Unable to access user profile")
             }
 
             const html = response.responseText;
@@ -1977,6 +1976,7 @@
 
                 if (fallbackBlob) {
                     meta.avatarUrl = URL.createObjectURL(fallbackBlob);
+                    await idbSet(avatarKey(site, username), fallbackBlob);
                 }
                 meta.noAvatar = true;
             }
@@ -2080,23 +2080,71 @@
     }
 
     
+    // global debug state
+    window.__gmDebug = {
+        total: 0,
+        requests: []
+    };
+
+    let gmRequestId = 0;
+    const inflightGM = {}; // url -> Promise
+
     function gmFetch(options) {
-        return new Promise((resolve, reject) => {
+        const url = options.url; // use the request URL as the key
+        const id = ++gmRequestId;
+        const start = performance.now();
+        const buffer = [];
+        const log = (...args) => buffer.push(["log", ...args]);
+        const warn = (...args) => buffer.push(["warn", ...args]);
+
+        // capture the call stack for debugging
+        const stack = new Error("GM_xmlhttpRequest call site");
+
+        // If there's already a request in-flight for this URL, return it
+        if (inflightGM[url]) {
+            log(`Deduplicating request for ${url}`);
+            return inflightGM[url];
+        }
+
+        log("START", options.method || "GET", url);
+
+        const promise = new Promise((resolve, reject) => {
             GM_xmlhttpRequest({
                 ...options,
                 onload: (res) => {
+                    const duration = (performance.now() - start).toFixed(1);
+                    log("SUCCESS", { status: res.status, duration: `${duration}ms` });
+                    flush();
                     resolve(res);
                 },
                 onerror: (err) => {
-                    console.warn("GM onerror", err);
+                    warn("ERROR", err);
+                    flush();
                     reject(err);
                 },
                 ontimeout: (err) => {
-                    console.warn("GM ontimeout", err);
+                    warn("TIMEOUT", err);
+                    flush();
                     reject(err);
                 }
             });
+        })
+        .finally(() => {
+            delete inflightGM[url]; // release the lock
         });
+
+        inflightGM[url] = promise;
+        return promise;
+
+        function flush() {
+            console.groupCollapsed(`[GM#${id}] ${options.method || "GET"} ${url}`);
+            for (const entry of buffer) {
+                const [type, ...args] = entry;
+                console[type](...args);
+            }
+            console.error(stack); // clickable call trace
+            console.groupEnd();
+        }
     }
 
     const IRC_MODE_PREFIXES = /^[~&@%+!]+/;
