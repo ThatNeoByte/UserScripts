@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            The Lounge – Shoutbox Beautifier (Android) (ThatNeoByte Edition)
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         3.0-tnb.16
+// @version         3.0-tnb.17
 // @description     Advanced rework of the original Shoutbox Beautifier for The Lounge. Reformats bridged chatbot messages to appear as native user messages, with extensible handler architecture, decorators, metadata-driven styling, regex matching, preview-safe DOM updates, and expanded network support. Fetches user details from supported UNIT3D trackers to display profile pictures, role icons, role colors, and custom icons. Note: You must be logged into each tracker in your browser for profile data to load.
 //
 // @author          spindrift
@@ -1844,7 +1844,7 @@
             if (avatarResp.status === 200) {
                 const blob = avatarResp.response;
                 await idbSet(avatarKey(site, username), blob);
-                meta.avatarUrl = URL.createObjectURL(blob);
+                meta.avatarUrl = await blobToDataUrl(blob);
             } 
             else if (avatarResp.status === 404) {
                 let fallbackBlob = await idbGet(siteFallbackKey(site));
@@ -1864,7 +1864,7 @@
                 }
 
                 if (fallbackBlob) {
-                    meta.avatarUrl = URL.createObjectURL(fallbackBlob);
+                    meta.avatarUrl = await blobToDataUrl(fallbackBlob);
                     await idbSet(avatarKey(site, username), fallbackBlob);
                 }
                 meta.noAvatar = true;
@@ -1873,7 +1873,7 @@
             if (userIconResp.status === 200) {
                 const userIconblob = userIconResp.response;
                 await idbSet(iconKey(site, username), userIconblob);
-                meta.userIconUrl = URL.createObjectURL(userIconblob);
+                meta.userIconUrl = await blobToDataUrl(userIconblob);
             }
 
             if (avatarResp.status === 200 || avatarResp.status === 404) {
@@ -1900,11 +1900,11 @@
             const userIconBlob = await idbGet(iconKey(site, username));
 
             if (blob) {
-                meta.avatarUrl = URL.createObjectURL(blob);
+                meta.avatarUrl = await blobToDataUrl(blob);
             }
 
             if (userIconBlob) {
-                meta.userIconUrl = URL.createObjectURL(userIconBlob);
+                meta.userIconUrl = await blobToDataUrl(userIconBlob);
             }
 
             if (meta.noAvatar) {
@@ -1925,7 +1925,7 @@
                 }
 
                 if (fallbackBlob) {
-                    meta.avatarUrl = URL.createObjectURL(fallbackBlob);
+                    meta.avatarUrl = await blobToDataUrl(fallbackBlob);
                 }
 
                 return {
