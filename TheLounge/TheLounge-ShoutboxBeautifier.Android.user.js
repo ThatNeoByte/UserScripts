@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            The Lounge – Shoutbox Beautifier (Android) (ThatNeoByte Edition)
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         3.0-tnb.17
+// @version         3.0-tnb.18
 // @description     Advanced rework of the original Shoutbox Beautifier for The Lounge. Reformats bridged chatbot messages to appear as native user messages, with extensible handler architecture, decorators, metadata-driven styling, regex matching, preview-safe DOM updates, and expanded network support. Fetches user details from supported UNIT3D trackers to display profile pictures, role icons, role colors, and custom icons. Note: You must be logged into each tracker in your browser for profile data to load.
 //
 // @author          spindrift
@@ -116,7 +116,7 @@
         ALWAYS_DISPLAY_DOMAINS: [/^https?\:\/\/i\.seedpool\.org\/s\//, /^https?\:\/\/external-content\.duckduckgo\.com\/iu\//, /^https?\:\/\/onlyimage\.org\/image\//],
         BYPASS_EMBED_DOMAINS: [/^https?\:\/\/img\.homiehelpdesk\.net\/share\//],
         BYPASS_WSRV_DOMAINS: [/^https?:\/\/ptpimg\.me\//],
-        CACHE_TTL: 1000 * 60 * 60 * 24 * 14, // 14 days
+        CACHE_TTL: 1000 * 60 * 60 * 24, // 1 day
     }
 
     const DEFAULT_SITE_CONFIG = {
@@ -621,7 +621,7 @@
 
             enabled: true,
             handler: function (msg) {
-                const match = msg.text.match(/^\[USER]-\[Enabled]-\[User: (.+)\]-\[Link: ([^\]]+)\].*$/);
+                const match = msg.text.match(/^\[USER]-\[Enabled\d?]-\[User: (.+)\]-\[Link: ([^\]]+)\].*$/);
                 if (!match) return null;
 
                 const name = match[1];
@@ -2139,18 +2139,20 @@
             addAvatarDecorations(fromSpan, site, initialUsername);
         }
         
-        // Only parse and reformat if a matcher matches the username
-        if (!bot_match) {
-            const contentSpan = messageElement.querySelector('.content'); // Select the content span
-            if (!contentSpan) return;
-            
-            contentSpan.querySelectorAll("a").forEach(convertLink);
-            return;
-        }
-
         // Get the message contents
         const contentSpan = messageElement.querySelector('.content'); // Select the content span
         if (!contentSpan) return;
+        
+        // Only parse and reformat if a matcher matches the username
+        if (!bot_match) {
+            // Handle BBCode from IRC users
+            const html = BbobHtml.default(contentSpan.innerHTML, BbobPresetHTML5.default());
+            const cleanHtml = DOMPurify.sanitize(html);
+            contentSpan.innerHTML = cleanHtml;
+
+            contentSpan.querySelectorAll("a").forEach(convertLink);
+            return;
+        }
 
         // Parse the message using format handlers
         const parsed = runFormatHandlers({
@@ -2213,7 +2215,7 @@
 
         // Parse BBCode and convert links/images in the newMessage content
         // Remove all the lounge created a tags wit hjust it's content
-        var input = contentSpan.innerHTML.replace(/\<a(?:.+)?\>(.*)\<\/a\>/gi, '[url]$1[/url]');
+        var input = contentSpan.innerHTML.replace(/\<a(?:.+?)?\>(.*?)\<\/a\>/gi, '[url]$1[/url]');
 
         // Replace all img tags with the custom image provider
         input = input.replace(/\[img=?([^\]]+)?\]\[url\](.*)\[\/img\]\[\/url\]/gi, (match, width, url) => {
