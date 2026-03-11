@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            The Lounge – Shoutbox Beautifier (Android) (ThatNeoByte Edition)
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         3.0-tnb.18
+// @version         3.0-tnb.19
 // @description     Advanced rework of the original Shoutbox Beautifier for The Lounge. Reformats bridged chatbot messages to appear as native user messages, with extensible handler architecture, decorators, metadata-driven styling, regex matching, preview-safe DOM updates, and expanded network support. Fetches user details from supported UNIT3D trackers to display profile pictures, role icons, role colors, and custom icons. Note: You must be logged into each tracker in your browser for profile data to load.
 //
 // @author          spindrift
@@ -1053,6 +1053,29 @@
 
                 const newMessage = `<span style="color: #00bcd4;">[${type}]</span> ${title} <strong>(${formatBytes(sizeBytes)})</strong> By ${uploader} - <a href="https://luminarr.me/torrents/${torrentID}" target="_blank" rel="noopener noreferrer" class="link">https://luminarr.me/torrents/${torrentID}</a>`;
 
+                return {
+                    username: username,
+                    newMessage: newMessage,
+                    prefix: "(",
+                    suffix: ")",
+                };
+            }
+        },
+        {
+            // Format: [New-User-App]-[Link: link]
+            // Used at: DP
+
+            enabled: true,
+            handler: function (msg) {
+                const match = msg.text.match(/^\[New-User-App\]-\[Link: (.*)\]$/);
+                if (!match) return null;
+
+                const link = match[1];
+
+                const username = `Application 📝`;
+
+                const newMessage = `New Application - <a href="${link}" target="_blank" rel="noopener noreferrer" class="link">${link}</a>`;
+                
                 return {
                     username: username,
                     newMessage: newMessage,
