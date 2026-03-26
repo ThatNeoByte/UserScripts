@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            The Lounge – Shoutbox Beautifier (ThatNeoByte Edition)
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         3.0-tnb.19
+// @version         3.0-tnb.20
 // @description     Advanced rework of the original Shoutbox Beautifier for The Lounge. Reformats bridged chatbot messages to appear as native user messages, with extensible handler architecture, decorators, metadata-driven styling, regex matching, preview-safe DOM updates, and expanded network support. Fetches user details from supported UNIT3D trackers to display profile pictures, role icons, role colors, and custom icons. Note: You must be logged into each tracker in your browser for profile data to load.
 //
 // @author          spindrift
@@ -113,10 +113,14 @@
         DECORATOR_R: '',        // Will be appended to username
         METADATA: 'SB',         // Default metadata to be inserted into HTML
         IMG_EXT: /\.(png|jpg|jpeg|gif|webp|bmp|svg)$/i,
-        ALWAYS_DISPLAY_DOMAINS: [/^https?\:\/\/i\.seedpool\.org\/s\//, /^https?\:\/\/external-content\.duckduckgo\.com\/iu\//, /^https?\:\/\/onlyimage\.org\/image\//],
+        ALWAYS_DISPLAY_DOMAINS: [/^https?\:\/\/mm.yaf.quest\//, /^https?\:\/\/i\.seedpool\.org\/s\//, /^https?\:\/\/external-content\.duckduckgo\.com\/iu\//, /^https?\:\/\/onlyimage\.org\/image\//],
         BYPASS_EMBED_DOMAINS: [/^https?\:\/\/img\.homiehelpdesk\.net\/share\//],
-        BYPASS_WSRV_DOMAINS: [/^https?:\/\/ptpimg\.me\//],
-        CACHE_TTL: 1000 * 60 * 60 * 24, // 1 day
+        BYPASS_WSRV_DOMAINS: [/^https?\:\/\/ptpimg\.me\//],
+        AVATAR_CACHE_TTL: 1000 * 60 * 60 * 24 * 14, // 14 day, this is a long time, but it's to reduce load on the tracker and device. Some trackers have over 1k user in the irc, thus fetching 1k avatars every day would be bad
+        ICON_CACHE_TTL: 1000 * 60 * 60 * 24 * 14, // 14 day
+        PROFILE_CACHE_TTL: 1000 * 60 * 60 * 24 * 2, // 2 day
+        SITE_CACHE_TTL: 1000 * 60 * 60 * 24 * 2, // 2 day
+        BOT_USERNAMES: [/^ChanServ$/i, /^HostServ$/i, /^NickServ$/i, /^SYSTEM$/i, /^SeedServ$/i, /^Banker$/i, /^Bot$/i, /^Dealer$/i, /^StatusBot$/, /^BluBot$/], // Used to decorate none-bridge bots 
     }
 
     const DEFAULT_SITE_CONFIG = {
@@ -133,14 +137,20 @@
         // Can also add regex patterns for more complex matches
         // NOTE: A hit from any matcher will run all handlers
         {
+            name: 'TNB',
+            matcher: /^NeoBot$/i,
+            host: 'irc.tnb.moe',
+            domain: 'darkpeers.org',
+        },
+        {
             name: 'ULCX',
-            matcher: /ULCX/,
+            matcher: /^ULCX$/i,
             host: 'irc.upload.cx',
             domain: 'upload.cx',
         },
         {
             name: 'RFX',
-            matcher: /WALL-E/,
+            matcher: /^WALL-E$/i,
             host: 'irc.reelflix.cc',
             domain: 'reelflix.cc',
         },
@@ -151,67 +161,74 @@
         },
         {
             name: 'HHD',
-            matcher: /BBot/,
+            matcher: /^BBot$/i,
             host: 'irc.homiehelpdesk.net',
             domain: 'homiehelpdesk.net',
         },
         {
             name: 'DP',
-            matcher: /darkpeers/,
+            matcher: /^darkpeers$/i,
             host: 'irc.p2p-network.net',
             domain: 'darkpeers.org',
             channels: ['#darkpeers', '#dphelp', '#dplog', '#dpmoderation', '#dpstaff'],
         },
         {
+            name: 'BLU',
+            matcher: /^blutopiabot$/i, // There is no bridge, so nothing to match agains.
+            host: 'irc.p2p-network.net',
+            domain: 'blutopia.cc',
+            channels: ['#blutopia'],
+        },
+        {
             name: 'LST',
-            matcher: /Bot/,
+            matcher: /^Bot$/i,
             host: 'irc.lst.gg',
             domain: 'lst.gg',
         },
         {
             name: 'LUME',
-            matcher: /(?:Luminarr|Announce)/,
+            matcher: /^(?:Luminarr|Announce)$/i,
             host: 'irc.luminarr.me',
             domain: 'luminarr.me',
         },
         {
             name: 'STC',
-            matcher: /STC/,
+            matcher: /^stc$/i,
             host: 'irc.skipthecommercials.xyz',
             domain: 'skipthecommercials.xyz',
         },
         {
             disabled: true, // Disable OE+ support, as they require the file extension in the avatar URL
             name: 'OE+',
-            matcher: /bridgebot/,
+            matcher: /^bridgebot$/i,
             host: 'irc.onlyencodes.cc',
             domain: 'onlyencodes.cc',
         },
         {
             disabled: true, // Disable BHD support, as i am not a member of that community and cannot test it.
             name: 'BHD',
-            matcher: /Willie/,
+            matcher: /^Willie$/,
             host: '',
-            domain: 'bluetopia.cc',
+            domain: '',
         },
         {
             disabled: true, // Disable ATH support, as i am not a member of that community and cannot test it.
             name: 'ATH',
-            matcher: /Chatbot/,
+            matcher: /^Chatbot$/i,
             host: '',
             domain: 'aither.cc',
         },
         {
             disabled: true, // Disable HUNO support, as i am not a member of that community and cannot test it.
-            name: 'HUNO', 
-            matcher: /(?:Mellos|.+?-web)/,
+            name: 'HUNO',
+            matcher: /^(?:Mellos|.+?-web)$/i,
             host: '',
             domain: 'hawke.uno',
         },
         {
             disabled: true, // Disable ANT support, as it does not use the username in the avatar URL
             name: 'ANT',
-            matcher: /Sauron/,
+            matcher: /^Sauron$/i,
             host: 'irc.nebulance.io',
             domain: 'anthelion.me',
             channels: ['#ant']
@@ -479,6 +496,7 @@
                     newMessage: newMessage,
                     prefix: "(",
                     suffix: ")",
+                    skipUserList: true, // This message doesn't correspond to a real user, so we can skip showing it in the user list
                 };
             }
         },
@@ -517,6 +535,7 @@
                     newMessage: newMessage,
                     prefix: "(",
                     suffix: ")",
+                    skipUserList: true, // This message doesn't correspond to a real user, so we can skip showing it in the user list
                 };
             }
         },
@@ -588,6 +607,7 @@
                     newMessage: newMessage,
                     prefix: "(",
                     suffix: ")",
+                    skipUserList: true, // This message doesn't correspond to a real user, so we can skip showing it in the user list
                 };
             }
         },
@@ -682,6 +702,7 @@
                     newMessage: newMessage,
                     prefix: "(",
                     suffix: ")",
+                    skipUserList: true, // This message doesn't correspond to a real user, so we can skip showing it in the user list
                 };
             }
         },
@@ -861,6 +882,7 @@
                     newMessage: newMessage,
                     prefix: "(",
                     suffix: ")",
+                    skipUserList: true, // This message doesn't correspond to a real user, so we can skip showing it in the user list
                 };
             }
         },
@@ -1057,6 +1079,7 @@
                     newMessage: newMessage,
                     prefix: "(",
                     suffix: ")",
+                    skipUserList: true, // This message doesn't correspond to a real user, so we can skip showing it in the user list
                 };
             }
         },
@@ -1080,6 +1103,7 @@
                     newMessage: newMessage,
                     prefix: "(",
                     suffix: ")",
+                    skipUserList: true, // This message doesn't correspond to a real user, so we can skip showing it in the user list
                 };
             }
         },
@@ -1298,15 +1322,15 @@
         return colorClass || null;
     }
 
-    function applyColorToMessage(fromSpan, colorClass) {
-        // Apply the color class to the message's fromSpan
+    function applyColorToMessage(userSpan, colorClass) {
+        // Apply the color class to the message's userSpan
         if (colorClass) {
             // Remove any existing color classes
-            const classes = fromSpan.className.split(' ');
+            const classes = userSpan.className.split(' ');
             const filteredClasses = classes.filter(cls => !cls.startsWith('color-'));
             // Add the new color class
             filteredClasses.push(colorClass);
-            fromSpan.className = filteredClasses.join(' ');
+            userSpan.className = filteredClasses.join(' ');
         }
     }
 
@@ -1319,7 +1343,14 @@
 
     // Check if a nick matches any bot pattern (string or regex)
     function matcherMatches(username) {
-        return BOT_SITES.find(site => {
+        let matched = false;
+        CONFIG.BOT_USERNAMES.forEach(element => {
+            if (element.test(username)) {
+                matched = true;
+            }
+        }); 
+
+        return matched || BOT_SITES.find(site => {
             if (typeof site.matcher === 'undefined') return false;
             if (typeof site.matcher === 'string') {
                 return username === site.matcher;
@@ -1362,7 +1393,7 @@
         GM_setValue(metaKey(site, username), data);
     }
 
-    function siteFallbackKey(site) {
+    function siteFallbackDataUrlKey(site) {
         return `${site.name}:__fallback_avatar__`;
     }
 
@@ -1418,7 +1449,7 @@
         return `${site.name}:${username}:icon`;
     }
 
-    async function idbGet(key) {
+    async function idbGetUserAsset(key) {
         const db = await openIdb();
         return new Promise(resolve => {
             const tx = db.transaction(IDB_AVATAR_STORE, "readonly");
@@ -1428,7 +1459,7 @@
         });
     }
 
-    async function idbSet(key, blob) {
+    async function idbSetUserAsset(key, blob) {
         const db = await openIdb();
         return new Promise(resolve => {
             const tx = db.transaction(IDB_AVATAR_STORE, "readwrite");
@@ -1506,16 +1537,16 @@
         const key = siteRankKey(site);
 
         const cached = await idbGetSiteAsset(key);
-        if (cached && Date.now() - cached.cachedAt < CONFIG.CACHE_TTL) {
+        if (cached && Date.now() - cached.cachedAt < CONFIG.SITE_CACHE_TTL) {
             return cached.ranks;
         }
 
-        const response = await gmFetch({
+        const response = await gmFetchSite(site, {
             method: "GET",
             url: site.groupsUrl,
             responseType: "text",
             withCredentials: true
-        });
+        }, 2);
 
         if (response.status !== 200) {
             throw new Error("Failed to fetch rank page");
@@ -1560,64 +1591,60 @@
         const codepointCacheKey = FontCodePointKey(site);
         const styleId = `fa-${site.name}`;
 
-        // Prevent duplicate injection
         if (document.getElementById(styleId)) return;
 
-        // 1️⃣ Check cache
-        let cachedFont = await idbGet(fontCacheKey);
-        let cachedCodepoints = await idbGet(codepointCacheKey);
+        // 1️⃣ Cache
+        let cachedFonts = await idbGetSiteAsset(fontCacheKey);
+        let cachedCodepoints = await idbGetSiteAsset(codepointCacheKey);
 
-        let fontDataUrl = cachedFont?.dataUrl || null;
+        let fonts = cachedFonts || {};
         let codepoints = cachedCodepoints || null;
 
-        // 2️⃣ Fetch font if missing
-        if (!fontDataUrl) {
-            let fontUrl = await discoverFaFontUrl(site);
+        // 2️⃣ Discover + fetch fonts if missing
+        if (!fonts || Object.keys(fonts).length === 0) {
+            const discoveredFonts = await discoverFaFontUrl(site);
 
-            if (!fontUrl) {
-                console.warn(`[FA] Could not discover font URL for ${site.name}`);
+            if (!discoveredFonts) {
+                console.warn(`[FA] No fonts discovered for ${site.name}`);
                 return;
             }
 
-            try {
-                const fontResponse = await gmFetch({
-                    method: "GET",
-                    url: fontUrl,
-                    responseType: "blob",
-                    withCredentials: true
-                });
+            fonts = {};
 
-                if (fontResponse.status === 200) {
-                    if (!fontUrl.startsWith('data:')) {
-                        const fontResponse = await gmFetch({
+            for (const [type, url] of Object.entries(discoveredFonts)) {
+                try {
+                    let dataUrl = url;
+
+                    if (!url.startsWith("data:")) {
+                        const res = await gmFetchSite(site, {
                             method: "GET",
-                            url: fontUrl,
+                            url,
                             responseType: "blob",
                             withCredentials: true
-                        });
+                        }, 2);
 
-                        if (fontResponse.status === 200) {
-                            fontDataUrl = await blobToDataUrl(fontResponse.response);
-                        }
-                    } else {
-                        fontDataUrl = fontUrl; // already base64
+                        if (res.status !== 200) continue;
+
+                        dataUrl = await blobToDataUrl(res.response);
                     }
-                    await idbSet(fontCacheKey, { dataUrl: fontDataUrl });
-                } else {
-                    console.warn(`[FA] Failed to fetch font for ${site.name}`);
+
+                    fonts[type] = dataUrl;
+
+                } catch (e) {
+                    console.warn(`[FA] Failed fetching ${type} font for ${site.name}`, e);
                 }
-            } catch (e) {
-                console.error(`[FA] Font fetch error for ${site.name}`, e);
             }
+
+            await idbSetSiteAsset(fontCacheKey, fonts);
         }
 
-        // 3️⃣ Fetch CSS and extract codepoints if missing
+        // 3️⃣ Codepoints
         if (!codepoints) {
             codepoints = await discoverFaCodepoints(site);
         }
 
-        // 4️⃣ Inject styles
-        injectSiteFontStyles(site, fontDataUrl, codepoints);
+        // 4️⃣ Inject
+        injectSiteFontStyles(site, fonts, codepoints);
     }
 
     function blobToDataUrl(blob) {
@@ -1646,12 +1673,12 @@
 
         try {
             // 1️⃣ Fetch homepage
-            const htmlResponse = await gmFetch({
+            const htmlResponse = await gmFetchSite(site, {
                 method: "GET",
                 url: `https://${site.domain}`,
                 responseType: "text",
                 withCredentials: true
-            });
+            }, 2);
 
             if (htmlResponse.status !== 200) {
                 console.warn(`[FA] Failed to load homepage for ${site.name}`);
@@ -1697,12 +1724,12 @@
                 }
 
                 try {
-                    const cssResponse = await gmFetch({
+                    const cssResponse = await gmFetchSite(site, {
                         method: "GET",
                         url: cssUrl,
                         responseType: "text",
                         withCredentials: true
-                    });
+                    }, 2);
 
                     if (cssResponse.status !== 200) continue;
 
@@ -1715,7 +1742,7 @@
 
                     const beforeRules = extractFaBeforeRules(cssText);
 
-                    await idbSet(codepointCacheKey, beforeRules);
+                    await idbSetSiteAsset(codepointCacheKey, beforeRules);
                     return beforeRules;
 
                 } catch (err) {
@@ -1732,19 +1759,26 @@
         }
     }
 
+    const fontTypes = [
+        { key: "solid", regex: /fa-solid-900[^"')]+\.woff2/ },
+        { key: "regular", regex: /fa-regular-400[^"')]+\.woff2/ },
+        { key: "brands", regex: /fa-brands-400[^"')]+\.woff2/ }
+    ];
+
     /**
      * Discover the FontAwesome solid font URL dynamically.
      * Looks through CSS bundles for @font-face blocks referencing fa-solid-900
      */
     async function discoverFaFontUrl(site) {
+        const fonts = {};
         try {
             // 1️⃣ Fetch homepage
-            const htmlResponse = await gmFetch({
+            const htmlResponse = await gmFetchSite(site, {
                 method: "GET",
                 url: `https://${site.domain}`,
                 responseType: "text",
                 withCredentials: true
-            });
+            }, 2);
 
             if (htmlResponse.status !== 200) {
                 console.warn(`[FA] Failed loading homepage for ${site.name}`);
@@ -1782,45 +1816,47 @@
 
             // 3️⃣ Fetch CSS files and look for @font-face
             for (const cssUrl of cssUrls) {
+                console.log(`[FA] Checking CSS ${cssUrl} for fonts...`);
                 try {
-                    const cssResponse = await gmFetch({
+                    const cssResponse = await gmFetchSite(site, {
                         method: "GET",
                         url: cssUrl,
                         responseType: "text",
                         withCredentials: true
-                    });
+                    }, 2);
 
                     if (cssResponse.status !== 200) continue;
 
                     const cssText = cssResponse.responseText;
 
-                    if (!cssText.includes("@font-face") || !cssText.includes("fa-solid")) {
+                    if (!cssText.includes("@font-face") || !cssText.includes("fa-")) {
                         continue;
                     }
 
-                    // Extract WOFF2 URL for solid 900
-                    const fontMatch = cssText.match(
-                        /url\(["']?([^"')]+fa-solid-900[^"')]+\.woff2)["']?\)/
-                    );
+                    for (const { key, regex } of fontTypes) {
+                        const match = cssText.match(new RegExp(`url\\(["']?([^"')]*${regex.source})["']?\\)`));
+                        if (match && match[1]) {
+                            let url = match[1];
 
-                    if (fontMatch && fontMatch[1]) {
-                        let fontUrl = fontMatch[1];
+                            if (url.startsWith("//")) {
+                                url = "https:" + url;
+                            } else if (url.startsWith("/")) {
+                                url = `https://${site.domain}${url}`;
+                            } else if (!url.startsWith("http")) {
+                                url = `https://${site.domain}/${url}`;
+                            }
 
-                        // Normalize
-                        if (fontUrl.startsWith("//")) {
-                            fontUrl = "https:" + fontUrl;
-                        } else if (fontUrl.startsWith("/")) {
-                            fontUrl = `https://${site.domain}${fontUrl}`;
-                        } else if (!fontUrl.startsWith("http")) {
-                            fontUrl = `https://${site.domain}/${fontUrl}`;
+                            fonts[key] = url;
                         }
-
-                        return fontUrl;
                     }
 
                 } catch (err) {
                     console.warn(`[FA] Failed reading CSS ${cssUrl}`, err);
                 }
+            }
+
+            if (Object.keys(fonts).length > 0) {
+                return fonts;
             }
 
             console.warn(`[FA] No fa-solid-900 font found for ${site.name}`);
@@ -1833,9 +1869,8 @@
     }
 
 
-    function injectSiteFontStyles(site, fontDataUrl, beforeRules) {
+    function injectSiteFontStyles(site, fonts, beforeRules) {
         const styleId = `fa-${site.name}`;
-        const fontName = `FA-${site.name}`;
 
         if (document.getElementById(styleId)) return;
 
@@ -1844,28 +1879,72 @@
 
         let css = "";
 
-        if (fontDataUrl) {
+        // --- FONT FACES ---
+        if (fonts.solid) {
             css += `
-                @font-face {
-                    font-family: "${fontName}";
-                    font-style: normal;
-                    font-weight: 900;
-                    src: url("${fontDataUrl}") format("woff2");
-                }
-
-                i.group-${site.name} {
-                    font-family: "${fontName}" !important;
-                    font-weight: 900 !important;
-                    font-style: normal;
-                    display: inline-block;
-                    line-height: 1;
-                    text-rendering: auto;
-                    -webkit-font-smoothing: antialiased;
-                    -moz-osx-font-smoothing: grayscale;
-                }
-                `;
+            @font-face {
+                font-family: "FA-${site.name}-Solid";
+                font-style: normal;
+                font-weight: 900;
+                src: url("${fonts.solid}") format("woff2");
+            }`;
         }
 
+        if (fonts.regular) {
+            css += `
+            @font-face {
+                font-family: "FA-${site.name}-Regular";
+                font-style: normal;
+                font-weight: 400;
+                src: url("${fonts.regular}") format("woff2");
+            }`;
+        }
+
+        if (fonts.brands) {
+            css += `
+            @font-face {
+                font-family: "FA-${site.name}-Brands";
+                font-style: normal;
+                font-weight: 400;
+                src: url("${fonts.brands}") format("woff2");
+            }`;
+        }
+
+        // --- FONT MAPPING ---
+        css += `
+        i.group-${site.name}.fa,
+        i.group-${site.name}.fas,
+        i.group-${site.name}.fa-solid,
+        i.group-${site.name}.fal,
+        i.group-${site.name}.fad {
+            font-family: "FA-${site.name}-Solid" !important;
+            font-weight: 900 !important;
+        }
+
+        i.group-${site.name}.far,
+        i.group-${site.name}.fa-regular {
+            font-family: "FA-${site.name}-Regular" !important;
+            font-weight: 400 !important;
+        }
+
+        i.group-${site.name}.fab,
+        i.group-${site.name}.fa-brands {
+            font-family: "FA-${site.name}-Brands" !important;
+            font-weight: 400 !important;
+        }
+
+        i.group-${site.name} {
+            font-style: normal;
+            display: inline-block;
+            line-height: 1;
+            text-rendering: auto;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        `;
+
+
+        // --- CODEPOINTS ---
         if (beforeRules && beforeRules.length > 0) {
             css += beforeRules.join("\n");
         }
@@ -1873,6 +1952,7 @@
         style.textContent = css;
         document.head.appendChild(style);
     }
+
     // UserCacheManager class to handle caching of user colors and avatars
     class UserCacheManager {
         constructor() {
@@ -1880,7 +1960,7 @@
             this.pending = new Map();    // request dedupe
         }
 
-        async getUser(site, username) {
+        async getUser(site, username, priority = 0) {
             const key = `${site.name}:${username}`;
 
             // Get from in-memory cache if available
@@ -1894,19 +1974,19 @@
             }
 
             // Otherwise, start a new request and store the promise in pending
-            const promise = this._getUserInternal(site, username)
+            const promise = this._getUserInternal(site, username, priority)
                 .finally(() => this.pending.delete(key));
 
             this.pending.set(key, promise);
             return promise;
         }
 
-        async _getUserInternal(site, username) {
+        async _getUserInternal(site, username, priority = 0) {
             const now = Date.now();
             const meta = metaGet(site, username);
 
             // Valid cache exists → use it
-            if (meta && now - meta.cachedAt < CONFIG.CACHE_TTL) {
+            if (meta && now - meta.profileCachedAt < CONFIG.PROFILE_CACHE_TTL) { // If the shorter TTL is still valid, use cache
                 const user = await this._buildUserFromCache(site, username, meta);
                 this.memory.set(`${site.name}:${username}`, user);
                 return user;
@@ -1914,7 +1994,7 @@
 
             // Cache expired but exists → use stale, refresh in background
             if (meta) {
-                this._refreshInBackground(site, username);
+                this._refreshInBackground(site, username, priority);
                 const user = await this._buildUserFromCache(site, username, meta);
                 this.memory.set(`${site.name}:${username}`, user);
                 return user;
@@ -1922,105 +2002,137 @@
 
             // No cache at all → fetch fresh and store
             try {
-                const fresh = await this._fetchAndStore(site, username);
-                this.memory.set(`${site.name}:${username}`, fresh);
-                return fresh;
+                const meta = await this._fetchAndStore(site, username, priority);
+                const user = await this._buildUserFromCache(site, username, meta);
+                this.memory.set(`${site.name}:${username}`, user);
+                return user;
             } catch (e) {
                 return this._placeholder(site, username);
             }
         }
 
-        async _fetchAndStore(site, username) {
+        async _fetchAndStore(site, username, priority = 0) {
             const profileUrl = site.getProfileUrl(username);
+            const now = Date.now();
+            const cachedMeta = metaGet(site, username);
+            const cachedUser = cachedMeta ? await this._buildUserFromCache(site, username, cachedMeta) : null;
 
-            var meta = {
-                profileUrl,
-                avatarUrl: null,
-                userIconUrl: null,
+            let meta = {
+                ...(cachedMeta || {}),
+                profileCachedAt: null,
+                avatarCachedAt: null,
+                iconCachedAt: null,
                 noAvatar: false,
+            };
+
+            if (cachedMeta && cachedUser) {
+                if (now - cachedMeta.profileCachedAt < CONFIG.PROFILE_CACHE_TTL) {
+                    meta.profileCachedAt = cachedMeta.profileCachedAt;
+                }
+                if (now - cachedMeta.avatarCachedAt < CONFIG.AVATAR_CACHE_TTL) {
+                    meta.avatarCachedAt = cachedMeta.avatarCachedAt;
+                }
+                if (now - cachedMeta.iconCachedAt < CONFIG.ICON_CACHE_TTL) {
+                    meta.iconCachedAt = cachedMeta.iconCachedAt;
+                }
             }
 
-            const response = await gmFetch({
-                method: "GET",
-                url: profileUrl,
-                responseType: "text",
-                withCredentials: true
-            });
+            let avatarPromise = Promise.resolve({ status: 204 }); // Default to 204 if we aren't fetching
+            let profilePromise = Promise.resolve({ status: 404 }); // Default to 404 if we aren't fetching, since profile is required for a valid user
+            let userIconPromise = Promise.resolve({ status: 204 }); // Default to 204 if we aren't fetching
 
-            if (!(response.status == 200 || response.status == 404 )) {
-                console.error(`Was unable to acces user's: ${username} details returned status code: `, response.status)
+            if (!meta.avatarCachedAt) {
+                avatarPromise = gmFetchSite(site, {
+                    method: "GET",
+                    url: site.getAvatarUrl(username),
+                    responseType: "blob",
+                    withCredentials: true
+                }, priority);
+            }
+
+            if (!meta.profileCachedAt) {
+                profilePromise = gmFetchSite(site, {
+                    method: "GET",
+                    url: profileUrl,
+                    responseType: "text",
+                    withCredentials: true
+                }, priority);
+            }
+
+            if (!meta.iconCachedAt) {
+                userIconPromise = gmFetchSite(site, {
+                    method: "GET",
+                    url: site.getIconUrl(username),
+                    responseType: "blob",
+                    withCredentials: true
+                }, priority);
+            }
+
+            const [avatarResp, profileResp, userIconResp] = await Promise.all([avatarPromise, profilePromise, userIconPromise]);
+
+            if (!(profileResp.status == 200 || profileResp.status == 404)) {
+                console.error(`Was unable to acces user's: ${username} details returned status code: `, profileResp.status)
                 throw new Error("Unable to access user profile")
             }
 
-            const html = response.responseText;
-            const doc = new DOMParser().parseFromString(html, "text/html");
+            // Profile fetch
+            if (profileResp.status === 200) {
+                const html = profileResp.responseText;
+                const doc = new DOMParser().parseFromString(html, "text/html");
+                meta.userclass = doc.querySelector(".user-tag__link")?.title || "Anonymous";
+                const ranks = await fetchSiteRanks(site);
+                meta.rankData = ranks[meta.userclass] || null;
+                meta.profileCachedAt = Date.now(); // update profile timestamp
+            } else if (profileResp.status === 404) {
+                // still mark it as cached, just empty/default
+                meta.rankData = null;
+                meta.profileCachedAt = Date.now();
+            }
 
-            // 🔧 Adjust selectors to your sites
-            meta.userclass = doc.querySelector(".user-tag__link")?.title || "Anonymous";
-            const ranks = await fetchSiteRanks(site);
-            meta.rankData = ranks[meta.userclass] || null;
-
-            // Fetch avatar blob
-            const avatarResp = await gmFetch({
-                method: "GET",
-                url: site.getAvatarUrl(username),
-                responseType: "blob",
-                withCredentials: true
-            });
-
-            const userIconResp = await gmFetch({
-                method: "GET",
-                url: site.getIconUrl(username),
-                responseType: "blob",
-                withCredentials: true
-            });
-
+            // Avatar fetch
             if (avatarResp.status === 200) {
-                const blob = avatarResp.response;
-                await idbSet(avatarKey(site, username), blob);
-                meta.avatarUrl = await blobToDataUrl(blob);
-            } 
-            else if (avatarResp.status === 404) {
-                let fallbackBlob = await idbGet(siteFallbackKey(site));
-
-                if (!fallbackBlob && site.placeholderAvatarUrl) {
-                    const fallbackResp = await gmFetch({
+                let blob = avatarResp.response;
+                let avatarUrl = await blobToDataUrl(blob);
+                await idbSetUserAsset(avatarKey(site, username), avatarUrl);
+                meta.avatarCachedAt = Date.now();
+            } else if (avatarResp.status === 404) {
+                // cache fallback
+                let fallbackAvatarDataUrl = await idbGetSiteAsset(siteFallbackDataUrlKey(site));
+                if (!fallbackAvatarDataUrl && site.placeholderAvatarUrl) {
+                    const fallbackResp = await gmFetchSite(site, {
                         method: "GET",
                         url: site.placeholderAvatarUrl,
                         responseType: "blob",
                         withCredentials: true
-                    });
-
+                    }, 2);
                     if (fallbackResp.status === 200) {
-                        fallbackBlob = fallbackResp.response;
-                        await idbSet(siteFallbackKey(site), fallbackBlob);
+                        let blob = fallbackResp.response;
+                        fallbackAvatarDataUrl = await blobToDataUrl(blob);
+                        await idbSetSiteAsset(siteFallbackDataUrlKey(site), fallbackAvatarDataUrl);
                     }
                 }
-
-                if (fallbackBlob) {
-                    meta.avatarUrl = await blobToDataUrl(fallbackBlob);
-                    await idbSet(avatarKey(site, username), fallbackBlob);
+                if (fallbackAvatarDataUrl) {
+                    await idbSetUserAsset(avatarKey(site, username), fallbackAvatarDataUrl);
                 }
                 meta.noAvatar = true;
+                meta.avatarCachedAt = Date.now(); // still update cachedAt!
             }
 
+            // User icon fetch
             if (userIconResp.status === 200) {
-                const userIconblob = userIconResp.response;
-                await idbSet(iconKey(site, username), userIconblob);
-                meta.userIconUrl = await blobToDataUrl(userIconblob);
+                let blob = userIconResp.response;
+                let iconUrl = await blobToDataUrl(blob);
+                await idbSetUserAsset(iconKey(site, username), iconUrl);
+                meta.iconCachedAt = Date.now();
+            } else if (userIconResp.status === 404) {
+                meta.iconCachedAt = Date.now(); // still update cachedAt
             }
 
-            if (avatarResp.status === 200 || avatarResp.status === 404) {
-                meta.cachedAt = Date.now();
-                metaSet(site, username, meta);
-                return {
-                    username: username,
-                    avatarUrl: meta.avatarUrl || site.placeholderAvatar,
-                    profileUrl: meta.profileUrl,
-                    userIconUrl: meta.userIconUrl,
-                    rankData: meta.rankData,
-                    userclass: meta.userclass,
-                }
+            // Save meta at the end no matter what
+            metaSet(site, username, meta);
+
+            if (avatarResp.status === 200 || avatarResp.status === 404 || avatarResp.status === 204) {
+                return meta;
             }
 
             // ❌ Any other error (401, 403, 429, 500, etc.)
@@ -2030,61 +2142,54 @@
         }
 
         async _buildUserFromCache(site, username, meta) {
-            const blob = await idbGet(avatarKey(site, username));
-            const userIconBlob = await idbGet(iconKey(site, username));
-
-            if (blob) {
-                meta.avatarUrl = await blobToDataUrl(blob);
-            }
-
-            if (userIconBlob) {
-                meta.userIconUrl = await blobToDataUrl(userIconBlob);
-            }
+            let avatarUrl = await idbGetUserAsset(avatarKey(site, username));
+            let iconUrl = await idbGetUserAsset(iconKey(site, username));
 
             if (meta.noAvatar) {
-                let fallbackBlob = await idbGet(siteFallbackKey(site));
+                let fallbackAvatarUrl = await idbGetSiteAsset(siteFallbackDataUrlKey(site));
 
-                if (!fallbackBlob && site.placeholderAvatarUrl) {
-                    const fallbackResp = await gmFetch({
+                if (!fallbackAvatarUrl && site.placeholderAvatarUrl) {
+                    const fallbackResp = await gmFetchSite(site, {
                         method: "GET",
                         url: site.placeholderAvatarUrl,
                         responseType: "blob",
                         withCredentials: true
-                    });
+                    }, 2);
 
                     if (fallbackResp.status === 200) {
-                        fallbackBlob = fallbackResp.response;
-                        await idbSet(siteFallbackKey(site), fallbackBlob);
+                        let blob = fallbackResp.response;
+                        fallbackAvatarUrl = await blobToDataUrl(blob);
+                        await idbSetSiteAsset(siteFallbackDataUrlKey(site), fallbackAvatarUrl);
                     }
                 }
 
-                if (fallbackBlob) {
-                    meta.avatarUrl = await blobToDataUrl(fallbackBlob);
+                if (fallbackAvatarUrl) {
+                    avatarUrl = fallbackAvatarUrl;
                 }
 
                 return {
                     username: username,
-                    avatarUrl: meta.avatarUrl || site.placeholderAvatar,
-                    profileUrl: meta.profileUrl,
-                    userIconUrl: meta.userIconUrl,
+                    avatarUrl: avatarUrl,
+                    userIconUrl: iconUrl,
                     rankData: meta.rankData,
                     userclass: meta.userclass,
+                    meta: meta,
                 };
             }
 
             return {
                 username: username,
-                avatarUrl: meta.avatarUrl || site.placeholderAvatar,
-                profileUrl: meta.profileUrl,
-                userIconUrl: meta.userIconUrl,
+                avatarUrl: avatarUrl,
+                userIconUrl: iconUrl,
                 rankData: meta.rankData,
                 userclass: meta.userclass,
+                meta: meta,
             };
         }
 
-        async _refreshInBackground(site, username) {
+        async _refreshInBackground(site, username, priority = 0) {
             try {
-                await this._fetchAndStore(site, username);
+                await this._fetchAndStore(site, username, priority);
             } catch {
                 // silent fail (likely not logged in)
             }
@@ -2094,7 +2199,6 @@
             return {
                 username: username,
                 avatarUrl: site.placeholderAvatar,
-                profileUrl: site.getProfileUrl(username),
                 userIconUrl: null,
                 rankData: null,
                 meta: {},
@@ -2102,72 +2206,291 @@
         }
     }
 
-    
-    // global debug state
+    class PriorityQueue {
+        constructor() {
+            this.buckets = new Map();     // priority -> Set(items)
+            this.itemMap = new Map();     // item -> priority
+            this.priorities = [];         // sorted DESC
+        }
+
+        _ensurePriority(priority) {
+            if (!this.buckets.has(priority)) {
+                this.buckets.set(priority, new Set());
+                this.priorities.push(priority);
+                this.priorities.sort((a, b) => b - a);
+            }
+        }
+
+        has(item) {
+            return this.itemMap.has(item);
+        }
+
+        getPriority(item) {
+            return this.itemMap.get(item); // undefined if not present
+        }
+
+        addOrUpgrade(item, priority) {
+            if (this.itemMap.has(item)) {
+                const oldPriority = this.itemMap.get(item);
+
+                // Only upgrade if higher priority
+                if (priority <= oldPriority) return false;
+
+                const oldSet = this.buckets.get(oldPriority);
+                oldSet.delete(item);
+
+                if (oldSet.size === 0) {
+                    this.buckets.delete(oldPriority);
+                    this.priorities = this.priorities.filter(p => p !== oldPriority);
+                }
+            }
+
+            this._ensurePriority(priority);
+
+            this.buckets.get(priority).add(item);
+            this.itemMap.set(item, priority);
+
+            return true;
+        }
+
+        dequeue() {
+            for (const priority of this.priorities) {
+                const set = this.buckets.get(priority);
+                if (set && set.size > 0) {
+                    const item = set.values().next().value;
+
+                    set.delete(item);
+                    this.itemMap.delete(item);
+
+                    if (set.size === 0) {
+                        this.buckets.delete(priority);
+                        this.priorities = this.priorities.filter(p => p !== priority);
+                    }
+
+                    return item;
+                }
+            }
+            return null;
+        }
+
+        peek() {
+            for (const priority of this.priorities) {
+                const set = this.buckets.get(priority);
+                if (set && set.size > 0) {
+                    return set.values().next().value;
+                }
+            }
+            return null;
+        }
+
+        size() {
+            return this.itemMap.size;
+        }
+    }
+
+    // ------------------------------
+    // Per-site queue state
+    // ------------------------------
+    const GM_QUEUES = {}; // site.name -> { queue: PriorityQueue, active: 0, recentRequests: [] }
+    const GM_BUFFERS = {}; // site.name -> [ [type, ...args], ... ] for logging
+    const MAX_CONCURRENT = 2;   // Max simultaneous requests per site
+    const REQUEST_DELAY = 500;  // ms between requests
+    const RATE_WINDOW = 20_000; // 2 seconds rolling window
+    const RATE_LIMIT = 25;      // max requests per window
+
+    let gmRequestId = 0;
+
+    // Global debug
     window.__gmDebug = {
         total: 0,
         requests: []
     };
 
-    let gmRequestId = 0;
-    const inflightGM = {}; // url -> Promise
+    // In-flight deduplication: siteName -> url -> Promise
+    const inflightGM = {};
+    const queuedGM = {}; // site -> url -> job
 
-    function gmFetch(options) {
-        const url = options.url; // use the request URL as the key
-        const id = ++gmRequestId;
-        const start = performance.now();
-        const buffer = [];
-        const log = (...args) => buffer.push(["log", ...args]);
-        const warn = (...args) => buffer.push(["warn", ...args]);
-
-        // capture the call stack for debugging
-        const stack = new Error("GM_xmlhttpRequest call site");
-
-        // If there's already a request in-flight for this URL, return it
-        if (inflightGM[url]) {
-            log(`Deduplicating request for ${url}`);
-            return inflightGM[url];
+    function getQueueForSite(siteName) {
+        if (!GM_QUEUES[siteName]) {
+            GM_QUEUES[siteName] = { queue: new PriorityQueue(), active: 0, recentRequests: [] };
+        }
+        if (!inflightGM[siteName]) {
+            inflightGM[siteName] = {};
+        }
+        if (!queuedGM[siteName]) {
+            queuedGM[siteName] = {};
+        }
+        if (!GM_BUFFERS[siteName]) {
+            GM_BUFFERS[siteName] = {};
         }
 
-        log("START", options.method || "GET", url);
+        return GM_QUEUES[siteName];
+    }
 
+    async function gmFetchSite(site, options, priority = 0) {
+        const url = options.url;
+        const siteQueue = getQueueForSite(site.name);
+
+        if (!GM_BUFFERS[site.name][url]) {
+            GM_BUFFERS[site.name][url] = [];
+        }
+
+        const start = performance.now();
+        const stack = new Error("GM_xmlhttpRequest call site");
+        const log = (...args) => GM_BUFFERS[site.name][url].push(["log", ...args]);
+        const warn = (...args) => GM_BUFFERS[site.name][url].push(["warn", ...args]);
+
+        log("QUEUE", options.method || "GET", url, "priority:", priority);
+
+        // =========================
+        // ✅ QUEUED DEDUPE + UPGRADE (FIRST!)
+        // =========================
+        const existingJob = queuedGM[site.name][url];
+        if (existingJob) {
+            log("DEDUP (queued)", options.method || "GET", url);
+            log("Current Priority:", siteQueue.queue.getPriority(existingJob));
+
+            if (priority > existingJob.priority) {
+                log(`UPGRADE → ${["LOW","HIGH","CRITICAL"][priority]} ${url}`);
+                existingJob.priority = priority;
+
+                siteQueue.queue.addOrUpgrade(existingJob, priority);
+                log("New Priority:", siteQueue.queue.getPriority(existingJob));
+            }
+
+            return existingJob.promise;
+        }
+
+        // =========================
+        // ✅ INFLIGHT DEDUPE (SECOND)
+        // =========================
+        if (inflightGM[site.name][url]) {
+            log("DEDUP (inflight)", options.method || "GET", url);
+            return inflightGM[site.name][url];
+        }
+
+        // =========================
+        // ✅ CREATE PROMISE (DEFERRED)
+        // =========================
+        let resolveFn, rejectFn;
         const promise = new Promise((resolve, reject) => {
-            GM_xmlhttpRequest({
-                ...options,
-                onload: (res) => {
-                    const duration = (performance.now() - start).toFixed(1);
-                    log("SUCCESS", { status: res.status, duration: `${duration}ms` });
-                    flush();
-                    resolve(res);
-                },
-                onerror: (err) => {
-                    warn("ERROR", err);
-                    flush();
-                    reject(err);
-                },
-                ontimeout: (err) => {
-                    warn("TIMEOUT", err);
-                    flush();
-                    reject(err);
-                }
-            });
-        })
-        .finally(() => {
-            delete inflightGM[url]; // release the lock
+            resolveFn = resolve;
+            rejectFn = reject;
         });
 
-        inflightGM[url] = promise;
-        return promise;
+        // 🚨 preregister immediately (prevents race conditions)
+        inflightGM[site.name][url] = promise;
+
+        // =========================
+        // ✅ CREATE JOB
+        // =========================
+        const job = {
+            id: ++gmRequestId,
+            url,
+            priority,
+            promise,
+            run: () => {
+                delete queuedGM[site.name][url]; // no longer queued
+
+                siteQueue.active++;
+                siteQueue.recentRequests.push(Date.now());
+
+                log("START", options.method || "GET", url, "priority:", job.priority);
+
+                GM_xmlhttpRequest({
+                    ...options,
+                    onload: (res) => {
+                        const duration = (performance.now() - start).toFixed(1);
+                        log("SUCCESS", { status: res.status, duration: `${duration}ms` });
+
+                        if (res.status === 429) {
+                            console.log("RATE LIMITED: pausing queue for 30s (should reset the rolling window)");
+                            setTimeout(() => done(), 30_000);
+                            resolveFn(res);
+                        } else {
+                            resolveFn(res);
+                            done();
+                        }
+
+                        flush();
+                    },
+                    onerror: (err) => {
+                        warn("ERROR", err);
+                        rejectFn(err);
+                        done();
+                        flush();
+                    },
+                    ontimeout: (err) => {
+                        warn("TIMEOUT", err);
+                        rejectFn(err);
+                        done();
+                        flush();
+                    }
+                });
+            }
+        };
+
+        // =========================
+        // ✅ QUEUE MANAGEMENT
+        // =========================
+        function done() {
+            siteQueue.active--;
+            setTimeout(processQueue, REQUEST_DELAY);
+        }
+
+        function processQueue() {
+            if (siteQueue.active >= MAX_CONCURRENT) return;
+
+            const now = Date.now();
+
+            // Clean rolling window
+            siteQueue.recentRequests = siteQueue.recentRequests.filter(
+                ts => now - ts < RATE_WINDOW
+            );
+
+            if (siteQueue.recentRequests.length >= RATE_LIMIT) {
+                console.debug("Rate limit hit for", site.name, "- delaying next request until rolling window allows");
+                setTimeout(processQueue, 500);
+                return;
+            }
+
+            const nextJob = siteQueue.queue.dequeue();
+            if (!nextJob) return;
+
+            nextJob.run();
+        }
 
         function flush() {
-            console.groupCollapsed(`[GM#${id}] ${options.method || "GET"} ${url}`);
-            for (const entry of buffer) {
+            console.groupCollapsed(
+                `[GM#${job.id}] ${options.method || "GET"} ${url} priority: ${job.priority}`
+            );
+
+            for (const entry of GM_BUFFERS[site.name][url]) {
                 const [type, ...args] = entry;
                 console[type](...args);
             }
-            console.error(stack); // clickable call trace
+
+            console.log(stack);
             console.groupEnd();
         }
+
+        // =========================
+        // ✅ STORE + ENQUEUE
+        // =========================
+        queuedGM[site.name][url] = job;
+        siteQueue.queue.addOrUpgrade(job, priority);
+
+        processQueue();
+
+        // =========================
+        // ✅ CLEANUP
+        // =========================
+        promise.finally(() => {
+            delete inflightGM[site.name][url];
+            delete GM_BUFFERS[site.name][url];
+        });
+
+        return promise;
     }
 
     const IRC_MODE_PREFIXES = /^[~&@%+!]+/;
@@ -2176,21 +2499,21 @@
         return username.replace(IRC_MODE_PREFIXES, '');
     }
 
-    function applyRankStyling(fromSpan, rankIcon, user, site) {
+    function applyRankStyling(userSpan, rankIcon, user, site) {
         if (!user.rankData) {
-            console.warn("No rank data available for user:", user);
-            user.rankData = { 
-                    color: "rgb(114, 137, 218)", 
-                    iconClass: "fad fa-user-lock" 
+            // console.warn("No rank data available for user:", user);
+            user.rankData = {
+                    color: "rgb(73, 98, 187)",
+                    iconClass: "fad fa-user-lock"
                 }; // Fallback to a default color and icon if rank data is missing
         }
 
         if (user.userclass) {
-            fromSpan.title = user.userclass;
+            userSpan.title = user.userclass;
         }
 
         if (user.rankData.color) {
-            fromSpan.style.color = user.rankData.color;
+            userSpan.style.color = user.rankData.color;
         }
 
         if (user.rankData.iconClass) {
@@ -2200,8 +2523,9 @@
         }
     }
 
-    function addAvatarDecorations(fromSpan, site, username) {
-        fromSpan.innerHTML = stripIrcPrefix(username); // Remove any existing text to prevent duplication when adding avatar and icon
+    function addAvatarDecorations(userSpan, site, username, priority = 0) {
+        userSpan.dataset.originalUsername = username; // Store original username for reference
+        userSpan.innerHTML = stripIrcPrefix(username); // Remove any existing text to prevent duplication when adding avatar and icon
 
         const avatarImg = document.createElement("img");
         avatarImg.src = site.placeholderAvatar;
@@ -2219,19 +2543,32 @@
 
         const rankIcon = document.createElement("i");
 
-        cache.getUser(site, username).then(user => {
+        cache.getUser(site, username, priority).then(user => {
             avatarImg.src = user.avatarUrl;
-            applyRankStyling(fromSpan, rankIcon, user, site);
-            // injectUserMeta(fromSpan, site, user);
+            applyRankStyling(userSpan, rankIcon, user, site);
             if (user.userIconUrl) {
                 iconImg.src = user.userIconUrl;
-                fromSpan.appendChild(iconImg);
+                userSpan.appendChild(iconImg);
             }
         });
 
-        fromSpan.prepend(rankIcon);
-        fromSpan.prepend(avatarImg);
+        userSpan.prepend(rankIcon);
+        userSpan.prepend(avatarImg);
+    }
 
+    function addBotDecorations(userSpan, site, username, priority = 0) {
+        userSpan.dataset.originalUsername = username; // Store original username for reference
+        userSpan.innerHTML = stripIrcPrefix(username); // Remove any existing text to prevent duplication when adding avatar and icon
+
+        const rankIcon = document.createElement("i");
+        rankIcon.className = "group-" + site.name + " fad fa-user-robot rank-icon";
+        rankIcon.style.marginLeft = "4px";
+        rankIcon.style.marginRight = "4px";
+
+        userSpan.title = "Bot";
+        userSpan.style.color = "rgb(73, 98, 187)";
+
+        userSpan.prepend(rankIcon);
     }
 
     // Called by the MutationObserver for each new message
@@ -2247,17 +2584,17 @@
         };
 
         // Get the username
-        const fromSpan = messageElement.querySelector('.from .user');
+        const userSpan = messageElement.querySelector('.from .user');
         // If we can't find a username, or the username is empty after stripping IRC prefixes, skip processing this message
-        if (!fromSpan || !fromSpan.textContent) return;
+        if (!userSpan || !userSpan.textContent) return;
 
-        if (fromSpan.querySelector('.chat-avatar')) {
+        if (userSpan.querySelector('.chat-avatar')) {
             // Avatar already added, skip processing to avoid duplication
             return;
         }
-        
-        const initialUsername = stripIrcPrefix(fromSpan.textContent);
-        
+
+        const initialUsername = stripIrcPrefix(userSpan.textContent);
+
         // Get the channel (from the closest ancestor with data-current-channel)
         const activeNetworkAndChannel = getActiveNetworkAndChannel();
         if (!activeNetworkAndChannel) {
@@ -2266,12 +2603,7 @@
         }
 
         const bot_match = matcherMatches(initialUsername);
-        
-        const site = BOT_SITES.getSite(activeNetworkAndChannel.network_host, activeNetworkAndChannel.channel);
-        if (site && !bot_match && !site.disabled) { 
-            addAvatarDecorations(fromSpan, site, initialUsername);
-        }
-        
+
         // Get the message contents
         const contentSpan = messageElement.querySelector('.content'); // Select the content span
         if (!contentSpan) return;
@@ -2282,8 +2614,12 @@
             const html = BbobHtml.default(contentSpan.innerHTML, BbobPresetHTML5.default());
             const cleanHtml = DOMPurify.sanitize(html);
             contentSpan.innerHTML = cleanHtml;
-            
+
             contentSpan.querySelectorAll("a").forEach(convertLink);
+
+            // console.debug(`No matcher for user "${initialUsername}", skipping format handlers and applying basic formatting.`);
+
+            // decorateUser(userSpan, 1);
             return;
         }
 
@@ -2298,7 +2634,7 @@
         if (!parsed) return;
 
         // Destructure parsed result
-        const { username, prefixToRemove, newMessage, metadata, prefix, suffix } = parsed;
+        const { username, prefixToRemove, newMessage, metadata, prefix, suffix, skipUserList } = parsed;
 
         // Check if username changed - if so, we need to change the style and text
         const usernameChanged = (username !== initialUsername);
@@ -2308,36 +2644,39 @@
             messageElement.setAttribute('data-from', username);
 
             // Add and modify message metadata
-            fromSpan.setAttribute('data-name', username);
-            fromSpan.setAttribute('data-bridged', metadata); // For CSS targeting
-            fromSpan.setAttribute('data-bridged-channel', activeNetworkAndChannel.channel); // For CSS targeting
+            userSpan.setAttribute('data-name', username);
+            userSpan.setAttribute('data-bridged', metadata); // For CSS targeting
+            userSpan.setAttribute('data-bridged-channel', activeNetworkAndChannel.channel); // For CSS targeting
 
             // Add the custom decorators
             if (CONFIG.USE_DECORATORS) {
-                fromSpan.textContent = (prefix ?? CONFIG.DECORATOR_L) + username + (suffix ?? CONFIG.DECORATOR_R);
+                userSpan.textContent = (prefix ?? CONFIG.DECORATOR_L) + username + (suffix ?? CONFIG.DECORATOR_R);
             } else {
-                fromSpan.textContent = username;
+                userSpan.textContent = username;
             }
 
-            // Add user to autocomplete
-            if (CONFIG.USE_AUTOCOMPLETE) { addUserToAutocomplete(username); }
+            if (!skipUserList) {
+                // Add user to autocomplete
+                if (CONFIG.USE_AUTOCOMPLETE) { addUserToAutocomplete(username); }
 
-            // Add the user's color
-            const colorClass = getUserColor(username);
-            if (colorClass) {
-                applyColorToMessage(fromSpan, colorClass);
-            } else {
-                // Color not available yet, try again after a delay
-                setTimeout(() => {
-                    const retryColorClass = getUserColor(username);
-                    if (retryColorClass) {
-                        applyColorToMessage(fromSpan, retryColorClass);
-                    }
-                }, 200);
+                // Add the user's color
+                const colorClass = getUserColor(username);
+                if (colorClass) {
+                    applyColorToMessage(userSpan, colorClass);
+                } else {
+                    // Color not available yet, try again after a delay
+                    setTimeout(() => {
+                        const retryColorClass = getUserColor(username);
+                        if (retryColorClass) {
+                            applyColorToMessage(userSpan, retryColorClass);
+                        }
+                    }, 200);
+                }
             }
 
-            if (site && !newMessage && !site.disabled) { // New message means that it's a logging message, and thus there is no username to fetch
-                addAvatarDecorations(fromSpan, site, username);
+            if (skipUserList)
+            {
+                userSpan.skipUserDecorations = true; // Custom property to indicate that this user should be skipped for decorations (used in MutationObserver)
             }
         }
 
@@ -2378,6 +2717,11 @@
         // If handler created a completely new message, replace content
         if (newMessage) {
             contentSpan.innerHTML = newMessage;
+        }
+
+        if (!userSpan.skipUserDecorations)
+        {
+            decorateUser(userSpan, 1);
         }
     }
 
@@ -2467,6 +2811,44 @@
         });
     }
 
+    function decorateUser(userSpan, priority = 0) {
+        if (userSpan.skipUserDecorations) return;
+
+        const username = userSpan.dataset.name || userSpan.textContent.trim();
+        if (!username) return;
+        
+        const activeNetworkAndChannel = getActiveNetworkAndChannel();
+        if (!activeNetworkAndChannel) {
+            console.warn('Could not determine active network and channel');
+            return;
+        }
+        
+        const site = BOT_SITES.getSite(activeNetworkAndChannel.network_host, activeNetworkAndChannel.channel);
+
+        if (site && !site.disabled) {
+            if (userSpan.dataset.decoratedSite === site.name) return;
+
+            const bot_match = matcherMatches(username);
+            if (bot_match) {
+                addBotDecorations(userSpan, site, username, priority);
+            } else {
+                addAvatarDecorations(userSpan, site, username, priority);
+            }
+            userSpan.dataset.decoratedSite = site.name;
+        }
+        else
+        {
+            if (userSpan.dataset.originalUsername && userSpan.dataset.decoratedSite)
+            {
+                userSpan.textContent = userSpan.dataset.originalUsername; // Revert to original username if site is now disabled
+                delete userSpan.dataset.originalUsername;
+                delete userSpan.dataset.decoratedSite;
+                userSpan.removeAttribute("title");
+                userSpan.removeAttribute("style");
+            }
+        }
+    }
+
     // Create and start observing DOM changes
     const observer = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
@@ -2474,42 +2856,53 @@
                 if (node.nodeType === 1) {
                     if (node.classList?.contains('msg')) {
                         processMessage(node);
+                    } else if (node.classList?.contains('user')) {
+                        decorateUser(node, 0);
                     } else {
-                        node.querySelectorAll?.('.msg').forEach(processMessage);
+                        const msgs = node.querySelectorAll?.('.msg');
+                        if (msgs?.length) {
+                            [...msgs].reverse().forEach(processMessage);
+                        }
+                        node.querySelectorAll?.('.names .user').forEach(userSpan => decorateUser(userSpan, 0));
+                        node.querySelectorAll?.('.messages .user').forEach(userSpan => decorateUser(userSpan, 0));
                     }
                 }
             });
         });
+        refreshUserList();
     });
+
+    function refreshUserList() {
+        const users = document.querySelectorAll(".names .user");
+
+        users.forEach(userSpan => {
+            decorateUser(userSpan, 0)
+        });
+    }
 
     // Start observing when the chat container is available
     function initializeObserver() {
         observer.observe(document.body, {
             childList: true,
-            subtree: true
+            subtree: true,
         });
     }
 
-    GM_registerMenuCommand("Clear Profile Cache", async () => {
-        if (!confirm("Clear all cached profile metadata?")) return;
+    GM_registerMenuCommand("Clear All User Cache", async () => {
+        if (!confirm("Clear all cached user data (metadata, avatars, assets)?")) return;
 
         await clearProfileCache();
-    });
-
-    GM_registerMenuCommand("Clear Avatar Cache", async () => {
-        if (!confirm("Clear all cached avatar images?")) return;
-
         await clearAvatarCache();
     });
 
-    GM_registerMenuCommand("Clear Asset Cache", async () => {
+    GM_registerMenuCommand("Clear Site Cache", async () => {
         if (!confirm("Clear all cached site assets?")) return;
 
         await clearAssetCache();
     });
-
-    GM_registerMenuCommand("Clear ALL User Cache", async () => {
-        if (!confirm("Clear ALL cached user data (metadata, avatars, assets)?")) return;
+    
+    GM_registerMenuCommand("Clear ALL Cache", async () => {
+        if (!confirm("Clear ALL cached data?")) return;
 
         await clearProfileCache();
         await clearAvatarCache();
