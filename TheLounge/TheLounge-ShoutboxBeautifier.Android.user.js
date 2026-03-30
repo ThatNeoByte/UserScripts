@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            The Lounge – Shoutbox Beautifier Android (ThatNeoByte Edition)
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         3.0-tnb.21
+// @version         3.0-tnb.22
 // @description     Advanced rework of the original Shoutbox Beautifier for The Lounge. Reformats bridged chatbot messages to appear as native user messages, with extensible handler architecture, decorators, metadata-driven styling, regex matching, preview-safe DOM updates, and expanded network support. Fetches user details from supported UNIT3D trackers to display profile pictures, role icons, role colors, and custom icons. Note: You must be logged into each tracker in your browser for profile data to load.
 //
 // @author          spindrift
@@ -15,8 +15,8 @@
 // @match           https://irc.thatneobyte.com/*
 //
 // @icon            https://thelounge.chat/favicon.ico
-// @updateURL       https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/TheLounge/TheLounge-ShoutboxBeautifier.user.js
-// @downloadURL     https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/TheLounge/TheLounge-ShoutboxBeautifier.user.js
+// @updateURL       https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/TheLounge/TheLounge-ShoutboxBeautifier.Android.user.js
+// @downloadURL     https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/TheLounge/TheLounge-ShoutboxBeautifier.Android.user.js
 //
 // @require         https://cdn.jsdelivr.net/npm/dompurify@3.3.1/dist/purify.min.js
 // @require         https://cdn.jsdelivr.net/npm/@bbob/html@4.3.1/dist/index.min.js
@@ -113,14 +113,14 @@
         DECORATOR_R: '',        // Will be appended to username
         METADATA: 'SB',         // Default metadata to be inserted into HTML
         IMG_EXT: /\.(png|jpg|jpeg|gif|webp|bmp|svg)$/i,
-        ALWAYS_DISPLAY_DOMAINS: [/^https?\:\/\/mm.yaf.quest\//, /^https?\:\/\/i\.seedpool\.org\/s\//, /^https?\:\/\/external-content\.duckduckgo\.com\/iu\//, /^https?\:\/\/onlyimage\.org\/image\//],
+        ALWAYS_DISPLAY_DOMAINS: [/^https?\:\/\/i\.seedpool\.org\/s\//, /^https?\:\/\/external-content\.duckduckgo\.com\/iu\//, /^https?\:\/\/onlyimage\.org\/image\//],
         BYPASS_EMBED_DOMAINS: [/^https?\:\/\/img\.homiehelpdesk\.net\/share\//],
-        BYPASS_WSRV_DOMAINS: [/^https?\:\/\/ptpimg\.me\//],
+        BYPASS_WSRV_DOMAINS: [/^https?:\/\/ptpimg\.me\//],
         AVATAR_CACHE_TTL: 1000 * 60 * 60 * 24 * 14, // 14 day, this is a long time, but it's to reduce load on the tracker and device. Some trackers have over 1k user in the irc, thus fetching 1k avatars every day would be bad
         ICON_CACHE_TTL: 1000 * 60 * 60 * 24 * 14, // 14 day
         PROFILE_CACHE_TTL: 1000 * 60 * 60 * 24 * 2, // 2 day
         SITE_CACHE_TTL: 1000 * 60 * 60 * 24 * 2, // 2 day
-        BOT_USERNAMES: [/^ChanServ$/i, /^HostServ$/i, /^NickServ$/i, /^SYSTEM$/i, /^SeedServ$/i, /^Banker$/i, /^Bot$/i, /^Dealer$/i, /^StatusBot$/, /^BluBot$/], // Used to decorate none-bridge bots 
+        BOT_USERNAMES: [/^ChanServ$/i, /^HostServ$/i, /^NickServ$/i, /^SYSTEM$/i, /^SeedServ$/i, /^Banker$/i, /^Bot$/i, /^Dealer$/i, /^StatusBot$/, /^BluBot$/, /^SystemBot$/], // Used to decorate none-bridge bots 
     }
 
     const DEFAULT_SITE_CONFIG = {
@@ -2738,29 +2738,11 @@
                 if (node.nodeType === 1) {
                     if (node.classList?.contains('msg')) {
                         processMessage(node);
-                    } else if (node.classList?.contains('user')) {
-                        decorateUser(node, 0);
-                    } else {
-                        const msgs = node.querySelectorAll?.('.msg');
-                        if (msgs?.length) {
-                            [...msgs].reverse().forEach(processMessage);
-                        }
-                        // node.querySelectorAll?.('.names .user').forEach(userSpan => decorateUser(userSpan, 0));
-                        node.querySelectorAll?.('.messages .user').forEach(userSpan => decorateUser(userSpan, 0));
                     }
                 }
             });
         });
-        // refreshUserList();
     });
-
-    function refreshUserList() {
-        const users = document.querySelectorAll(".names .user");
-
-        users.forEach(userSpan => {
-            decorateUser(userSpan, 0)
-        });
-    }
 
     // Start observing when the chat container is available
     function initializeObserver() {

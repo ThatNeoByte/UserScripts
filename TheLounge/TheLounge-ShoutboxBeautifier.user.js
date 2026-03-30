@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            The Lounge – Shoutbox Beautifier (ThatNeoByte Edition)
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         3.0-tnb.21
+// @version         3.0-tnb.22
 // @description     Advanced rework of the original Shoutbox Beautifier for The Lounge. Reformats bridged chatbot messages to appear as native user messages, with extensible handler architecture, decorators, metadata-driven styling, regex matching, preview-safe DOM updates, and expanded network support. Fetches user details from supported UNIT3D trackers to display profile pictures, role icons, role colors, and custom icons. Note: You must be logged into each tracker in your browser for profile data to load.
 //
 // @author          spindrift
@@ -120,7 +120,7 @@
         ICON_CACHE_TTL: 1000 * 60 * 60 * 24 * 14, // 14 day
         PROFILE_CACHE_TTL: 1000 * 60 * 60 * 24 * 2, // 2 day
         SITE_CACHE_TTL: 1000 * 60 * 60 * 24 * 2, // 2 day
-        BOT_USERNAMES: [/^ChanServ$/i, /^HostServ$/i, /^NickServ$/i, /^SYSTEM$/i, /^SeedServ$/i, /^Banker$/i, /^Bot$/i, /^Dealer$/i, /^StatusBot$/, /^BluBot$/], // Used to decorate none-bridge bots 
+        BOT_USERNAMES: [/^ChanServ$/i, /^HostServ$/i, /^NickServ$/i, /^SYSTEM$/i, /^SeedServ$/i, /^Banker$/i, /^Bot$/i, /^Dealer$/i, /^StatusBot$/, /^BluBot$/, /^SystemBot$/], // Used to decorate none-bridge bots 
     }
 
     const DEFAULT_SITE_CONFIG = {
