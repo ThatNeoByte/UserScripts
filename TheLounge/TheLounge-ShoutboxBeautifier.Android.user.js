@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            The Lounge – Shoutbox Beautifier Android (ThatNeoByte Edition)
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         3.0-tnb.22
+// @version         3.0-tnb.23
 // @description     Advanced rework of the original Shoutbox Beautifier for The Lounge. Reformats bridged chatbot messages to appear as native user messages, with extensible handler architecture, decorators, metadata-driven styling, regex matching, preview-safe DOM updates, and expanded network support. Fetches user details from supported UNIT3D trackers to display profile pictures, role icons, role colors, and custom icons. Note: You must be logged into each tracker in your browser for profile data to load.
 //
 // @author          spindrift
@@ -112,8 +112,8 @@
         DECORATOR_L: '-',       // Will be prepended to username
         DECORATOR_R: '',        // Will be appended to username
         METADATA: 'SB',         // Default metadata to be inserted into HTML
-        IMG_EXT: /\.(png|jpg|jpeg|gif|webp|bmp|svg)$/i,
-        ALWAYS_DISPLAY_DOMAINS: [/^https?\:\/\/i\.seedpool\.org\/s\//, /^https?\:\/\/external-content\.duckduckgo\.com\/iu\//, /^https?\:\/\/onlyimage\.org\/image\//],
+        IMG_EXT: /\.(png|jpg|jpeg|gif|webp|bmp|svg|avif)$/i,
+        ALWAYS_DISPLAY_DOMAINS: [/^https?\:\/\/mm.yaf.quest\//, /^https?\:\/\/i\.seedpool\.org\/s\//, /^https?\:\/\/external-content\.duckduckgo\.com\/iu\//, /^https?\:\/\/onlyimage\.org\/image\//],
         BYPASS_EMBED_DOMAINS: [/^https?\:\/\/img\.homiehelpdesk\.net\/share\//],
         BYPASS_WSRV_DOMAINS: [/^https?:\/\/ptpimg\.me\//],
         AVATAR_CACHE_TTL: 1000 * 60 * 60 * 24 * 14, // 14 day, this is a long time, but it's to reduce load on the tracker and device. Some trackers have over 1k user in the irc, thus fetching 1k avatars every day would be bad
