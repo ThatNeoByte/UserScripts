@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            The Lounge – Shoutbox Beautifier (ThatNeoByte Edition)
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         3.0-tnb.23
+// @version         3.0-tnb.24
 // @description     Advanced rework of the original Shoutbox Beautifier for The Lounge. Reformats bridged chatbot messages to appear as native user messages, with extensible handler architecture, decorators, metadata-driven styling, regex matching, preview-safe DOM updates, and expanded network support. Fetches user details from supported UNIT3D trackers to display profile pictures, role icons, role colors, and custom icons. Note: You must be logged into each tracker in your browser for profile data to load.
 //
 // @author          spindrift
@@ -35,6 +35,8 @@
 // @connect         blutopia.cc
 // @connect         aither.cc
 // @connect         hawke.uno
+// @connect         rocket-hd.cc
+// @connect         aura4k.net
 //
 // @grant           GM_xmlhttpRequest
 // @grant           GM_getValue
@@ -113,14 +115,14 @@
         DECORATOR_R: '',        // Will be appended to username
         METADATA: 'SB',         // Default metadata to be inserted into HTML
         IMG_EXT: /\.(png|jpg|jpeg|gif|webp|bmp|svg|avif)$/i,
-        ALWAYS_DISPLAY_DOMAINS: [/^https?\:\/\/mm.yaf.quest\//, /^https?\:\/\/i\.seedpool\.org\/s\//, /^https?\:\/\/external-content\.duckduckgo\.com\/iu\//, /^https?\:\/\/onlyimage\.org\/image\//],
+        ALWAYS_DISPLAY_DOMAINS: [/^https?\:\/\/preview.redd.it\//, /^https?\:\/\/mm.yaf.quest\//, /^https?\:\/\/i\.seedpool\.org\/s\//, /^https?\:\/\/external-content\.duckduckgo\.com\/iu\//, /^https?\:\/\/onlyimage\.org\/image\//],
         BYPASS_EMBED_DOMAINS: [/^https?\:\/\/img\.homiehelpdesk\.net\/share\//],
         BYPASS_WSRV_DOMAINS: [/^https?\:\/\/ptpimg\.me\//],
         AVATAR_CACHE_TTL: 1000 * 60 * 60 * 24 * 14, // 14 day, this is a long time, but it's to reduce load on the tracker and device. Some trackers have over 1k user in the irc, thus fetching 1k avatars every day would be bad
         ICON_CACHE_TTL: 1000 * 60 * 60 * 24 * 14, // 14 day
         PROFILE_CACHE_TTL: 1000 * 60 * 60 * 24 * 2, // 2 day
         SITE_CACHE_TTL: 1000 * 60 * 60 * 24 * 2, // 2 day
-        BOT_USERNAMES: [/^ChanServ$/i, /^HostServ$/i, /^NickServ$/i, /^SYSTEM$/i, /^SeedServ$/i, /^Banker$/i, /^Bot$/i, /^Dealer$/i, /^StatusBot$/, /^BluBot$/, /^SystemBot$/], // Used to decorate none-bridge bots 
+        BOT_USERNAMES: [/^ChanServ$/i, /^HostServ$/i, /^NickServ$/i, /^SYSTEM$/i, /^SeedServ$/i, /^Banker$/i, /^Bot$/i, /^Dealer$/i, /^StatusBot$/, /^BluBot$/, /^SystemBot$/, /^Rocketnouncer$/], // Used to decorate none-bridge bots 
     }
 
     const DEFAULT_SITE_CONFIG = {
@@ -196,6 +198,18 @@
             matcher: /^stc$/i,
             host: 'irc.skipthecommercials.xyz',
             domain: 'skipthecommercials.xyz',
+        },
+        {
+            name: 'RHD',
+            matcher: /^Rocketnouncer$/i,
+            host: 'irc.rocket-hd.cc',
+            domain: 'rocket-hd.cc',
+        },
+        {
+            name: 'A4K',
+            matcher: /^Aura4K$/i,
+            host: 'irc.aura4k.net',
+            domain: 'aura4k.net',
         },
         {
             disabled: true, // Disable OE+ support, as they require the file extension in the avatar URL
@@ -325,11 +339,27 @@
 
             enabled: true,
             handler: function (msg) {
-                const match = msg.text.match(/^\s?\[\s?SB\s?\]\s+\(?([^):]+)\)?:\s*(.*)$/);
+                const match = msg.text.match(/^\s?\[\s?SB\s?\]\s+\(?([^():]+)?\)?:\s*(.*)$/);
                 if (!match) return null;
 
                 return {
                     username: match[1],
+                    prefixToRemove: removeMatchedPrefix(match),
+                    metadata: CONFIG.METADATA
+                };
+            }
+        },
+        {
+            // Format: [SB] Message
+            // Used at: ANT
+
+            enabled: true,
+            handler: function (msg) {
+                const match = msg.text.match(/^\s?\[\s?SB\s?\]\s+\s*(.*)$/);
+                if (!match) return null;
+
+                return {
+                    username: msg.from, // ANT does not include the username in the message, so we use the sender instead
                     prefixToRemove: removeMatchedPrefix(match),
                     metadata: CONFIG.METADATA
                 };
@@ -342,6 +372,22 @@
             enabled: true,
             handler: function (msg) {
                 const match = msg.text.match(/^\[Chatbox\]\s+([^:]+):\s*(.*)$/);
+                if (!match) return null;
+
+                return {
+                    username: match[1],
+                    prefixToRemove: removeMatchedPrefix(match),
+                    metadata: CONFIG.METADATA
+                };
+            }
+        },
+        {
+            // Format: 🛰️ Nickname: Message
+            // Used at: RHD
+
+            enabled: true,
+            handler: function (msg) {
+                const match = msg.text.match(/^🛰️([^:]+):\s*(.*)$/);
                 if (!match) return null;
 
                 return {
