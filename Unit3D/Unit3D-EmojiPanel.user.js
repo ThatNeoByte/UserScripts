@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            Unit3D – Emoji & Media Picker (ThatNeoByte Edition)
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         1.0.3-tnb.4
+// @version         1.1.0-tnb.1
 // @description     Discord-style emoji, sticker, and GIF picker for Unit3D-based sites. Includes a small patch by ThatNeoByte; original script by ZukoXZoku.
 //
 // @author          ZukoXZoku
@@ -63,131 +63,52 @@
 // @connect         www.reddit.com
 // ==/UserScript==
 
-/* Note
-
-Feel free to collaborate with me, I could use some help on this project.
-I’m still learning JavaScript and sometimes use AI to maintain the script.
-I’m not perfect, but I want to create something people can have fun with.
-I do most of the work myself, and since I’m new to JavaScript, there are still things I’m figuring out.
-I promise I’ll rely less on AI as I learn more; for now, I only use it for parts I don’t fully understand yet.
-
-Thank you everyone!
-
-Regards, ZukoXZoku ❤️✌️
-
-*/
+// ═══════════════════════════════════════════════
+//  Updates: 
+//  1. Added IRC Support  
+//  2. Fixed lst.gg chat
+//  3. Updated the Appearance
+//  4. Fixed many issues, now it's faster and improved the speed at anything, even lazy load.
+//  NOTE: Now you can use it at your self-host IRC Channel.
+// ═══════════════════════════════════════════════
 
 (function () {
   'use strict';
 
+  // ═══════════════════════════════════════════════
+  //  POLYFILLS
+  // ═══════════════════════════════════════════════
   if (typeof window.GM_addStyle !== 'function') {
-    window.GM_addStyle = function (css) {
-      const style = document.createElement('style');
-      style.type = 'text/css';
-      style.textContent = css;
-      document.head.appendChild(style);
-      return style;
+    window.GM_addStyle = css => {
+      const s = document.createElement('style');
+      s.textContent = css;
+      document.head.appendChild(s);
+      return s;
     };
   }
 
-  const STICKERS_JSON_URLS = [
-    'https://raw.githubusercontent.com/ZukoXZoku/Ultimate-Emojis/refs/heads/main/stickers/stkrs.json'
-  ];
-  const VERSION = '1.0.3';
-  const UI_VERSION = '1.0';
+  const GM_Get = (k, d) => { try { return GM_getValue(k, d); } catch { return d; } };
+  const GM_Set = (k, v) => { try { GM_setValue(k, v); } catch {} };
 
-  const DEFAULTS = {
-    emojiSize: 48,
-    stickerSize: 256,
-    gifSize: 140,
-    gifInsertSize: 140,
-    gifPerPage: 24,
-    gifMinCol: 128,
-    gifShowTitles: false,
-    menuMinWidth: 370,
-    menuMaxWidth: 700,
-    menuMinHeight: 650,
-    menuMaxHeightVh: 75,
-    menuRadius: 10,
-    tileRadius: 10,
-    gapEmoji: 8,
-    gapLarge: 10,
-    bg: '#2f3136',
-    bgAlpha: 1.0,
-    text: '#dcddde',
-    accent: '#5865f2',
-    borderColor: '#3a3b41',
-    borderWidth: 1,
-    shadow: 0.6,
-    fontFamily: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif',
-    uiFontSize: 14,
-    tileBg: '#202225',
-    hoverScale: 1.02,
-    glowStrength: 10,
-    starColor: '#f1c40f',
-    starBg: 'rgba(0,0,0,.35)',
-    starBorder: '#3a3b41',
-    starTop: 6,
-    starRight: 6,
-    starSize: 28,
-    starSmSize: 22,
-    btnRadius: 8,
-    searchRadius: 10,
-    searchBorder: '#444',
-    paginationBg: '#202225',
-    paginationActiveBg: '#5865f2',
-    paginationColor: '#b9bbbe',
-    backdropBlur: 0,
-    zIndex: 9999999,
-    showGifStar: true,
-    gifProvider: 'local',
-    apiScope: 'global',
-    redditSubs: 'gifs, HighQualityGifs, reactiongifs, wholesomegifs, aww_gifs, CatGifs, DogGifs, animegifs, gaminggifs, cinemagraphs',
-    provTenor: true,
-    provGiphy: true,
-    provImgur: true,
-    provTumblr: true,
-    redditIncludeImages: false,
-    localGifUrls: ''
+  // Font Awesome
+  if (!document.querySelector('link[href*="font-awesome"],link[href*="fontawesome"]')) {
+    const fa = document.createElement('link');
+    fa.rel = 'stylesheet';
+    fa.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css';
+    fa.crossOrigin = 'anonymous';
+    document.head.appendChild(fa);
+  }
+
+  // ═══════════════════════════════════════════════
+  //  CONSTANTS
+  // ═══════════════════════════════════════════════
+  const VERSION = '1.1.0-tnb.1';
+  const LINKS = {
+    github: 'https://github.com/ZukoXZoku/Ultimate-Emojis',
+    openuserjs: 'https://openuserjs.org/scripts/ZukoXZoku/Ultimate_Emojis',
+    download: 'https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/Unit3D/Unit3D-EmojiPanel.user.js',
+    meta: 'https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/Unit3D/Unit3D-EmojiPanel.user.js'
   };
-
-  const SETTINGS_KEY = 'uni_settings';
-  const CUSTOM_CSS_KEY = 'uni_custom_css';
-  function GM_GetValueSafe(k, d) { try { return GM_getValue(k, d); } catch { return d; } }
-  function GM_SetValueSafe(k, v) { try { GM_setValue(k, v); } catch {} }
-  const settings = Object.assign({}, DEFAULTS, (function () { try { return JSON.parse(GM_GetValueSafe(SETTINGS_KEY, '{}')); } catch { return {}; } })());
-  const saveSettings = () => GM_SetValueSafe(SETTINGS_KEY, JSON.stringify(settings));
-
-  const API_STORE_GLOBAL = 'uni_api_global';
-  const API_STORE_SITE = `uni_api_site:${location.host}`;
-  function readApiStore(scope) { const key = scope === 'site' ? API_STORE_SITE : API_STORE_GLOBAL; try { return JSON.parse(GM_GetValueSafe(key, '{}')) || {}; } catch { return {}; } }
-  function writeApiStore(scope, obj) { const key = scope === 'site' ? API_STORE_SITE : API_STORE_GLOBAL; GM_SetValueSafe(key, JSON.stringify(obj || {})); }
-  function getApiKey(provider) {
-    const scope = settings.apiScope || 'global';
-    const s1 = readApiStore(scope);
-    const s2 = readApiStore(scope === 'site' ? 'global' : 'site');
-    const pick = (s) => {
-      if (provider === 'giphy') return s.giphyKey || '';
-      if (provider === 'tenor') return s.tenorKey || '';
-      if (provider === 'imgur') return s.imgurClientId || '';
-      if (provider === 'tumblr') return s.tumblrKey || '';
-      return '';
-    };
-    return pick(s1) || pick(s2) || '';
-  }
-  function setApiKey(provider, value) {
-    const scope = settings.apiScope || 'global';
-    const store = readApiStore(scope);
-    if (provider === 'giphy') store.giphyKey = value || '';
-    if (provider === 'tenor') store.tenorKey = value || '';
-    if (provider === 'imgur') store.imgurClientId = value || '';
-    if (provider === 'tumblr') store.tumblrKey = value || '';
-    writeApiStore(scope, store);
-  }
-
-  const getEmojiInsertSize = () => Number(settings.emojiSize) || DEFAULTS.emojiSize;
-  const getStickerInsertSize = () => Number(settings.stickerSize) || DEFAULTS.stickerSize;
-  const getGifInsertSize = () => Number(settings.gifInsertSize || settings.gifSize) || DEFAULTS.gifSize;
 
   const EMOJI_COUNT = 29;
   const EMOJI_ORIGINS = [
@@ -198,2022 +119,1267 @@ Regards, ZukoXZoku ❤️✌️
     const n = i + 1;
     return EMOJI_ORIGINS.map(base => `${base}${n}.json`);
   });
-  EMOJI_URL_GROUPS.unshift(["https://raw.githubusercontent.com/ThatNeoByte/Emoji-s/refs/heads/main/emoji1.json", "https://raw.githubusercontent.com/ThatNeoByte/Emoji-s/refs/heads/main/emoji1.json"]);
+  EMOJI_URL_GROUPS.unshift(
+    [
+      "https://raw.githubusercontent.com/ThatNeoByte/Emoji-s/refs/heads/main/emoji1.json"
+    ]
+  );
+  const STICKERS_JSON_URLS = [
+    'https://raw.githubusercontent.com/ZukoXZoku/Ultimate-Emojis/refs/heads/main/stickers/stkrs.json'
+  ];
 
-  let allEmojis = [], filteredEmojis = [], currentEmojiPage = 1;
-  let allStickers = [], filteredStickers = [], currentStickerPage = 1;
-  let allGifs = [], gifsLoaded = false, localGifStatus = '';
-  let currentGifPage = 1;
-  let activeTab = 'emoji';
-  let favOnlyEmoji = false, favOnlyStickers = false, favOnlyGifs = false;
-
-  const FAV_KEYS = {
-    emojiV2: 'uni_favoriteEmojis_v2',
-    stickerV2: 'uni_favoriteStickers_v2',
-    gifV2: 'uni_favoriteGifs_v2',
-    emojiLegacy: 'uni_favoriteEmojis',
-    stickerLegacy: 'uni_favoriteStickers',
-    gifLegacy: 'uni_favoriteGifs',
-    meta: 'uni_favMeta_v1'
+  // ═══════════════════════════════════════════════
+  //  EMOJI SUBCATEGORIES DATA
+  // ═══════════════════════════════════════════════
+  const EMOJI_CATS = {
+    custom:    { label: 'Custom',    icon: 'fa-star',         desc: 'Your custom uploaded emojis' },
+    emojipedia:{ label: 'Emojipedia',icon: 'fa-face-smile',   desc: 'Standard Unicode emojis' },
+    symbols:   { label: 'Symbols',   icon: 'fa-icons',        desc: 'Symbols, math, arrows' },
+    flags:     { label: 'Flags',     icon: 'fa-flag',         desc: 'Country & region flags' },
+    kaomoji:   { label: 'Kaomoji',   icon: 'fa-comment-dots', desc: 'Japanese text emoticons' },
+    ascii:     { label: 'ASCII',     icon: 'fa-terminal',     desc: 'ASCII emoticons' }
   };
-  const favEmojiV2 = new Set(JSON.parse(GM_GetValueSafe(FAV_KEYS.emojiV2, '[]')));
-  const favStickerV2 = new Set(JSON.parse(GM_GetValueSafe(FAV_KEYS.stickerV2, '[]')));
-  const favGifV2 = new Set(JSON.parse(GM_GetValueSafe(FAV_KEYS.gifV2, '[]')));
-  const favEmojiLegacy = new Set(JSON.parse(GM_GetValueSafe(FAV_KEYS.emojiLegacy, '[]')));
-  const favStickerLegacy = new Set(JSON.parse(GM_GetValueSafe(FAV_KEYS.stickerLegacy, '[]')));
-  const favGifLegacy = new Set(JSON.parse(GM_GetValueSafe(FAV_KEYS.gifLegacy, '[]')));
-  let favMeta = (function(){ try { return JSON.parse(GM_GetValueSafe(FAV_KEYS.meta, '{}')) || {}; } catch { return {}; } })();
-  const saveFavV2 = (k, set) => GM_SetValueSafe(k, JSON.stringify([...set]));
-  const saveFavLegacy = (k, set) => GM_SetValueSafe(k, JSON.stringify([...set]));
-  const saveFavMeta = () => GM_SetValueSafe(FAV_KEYS.meta, JSON.stringify(favMeta || {}));
+
+  const EMOJIPEDIA = {
+    'Smileys': '😀😃😄😁😆😅🤣😂🙂🙃😉😊😇🥰😍🤩😘😗😚😙🥲😋😛😜🤪😝🤑🤗🤭🫢🫣🤫🤔🫡🤐🤨😐😑😶🫥😏😒🙄😬🤥😌😔😪🤤😴😷🤒🤕🤢🤮🥵🥶🥴😵😵‍💫🤯🤠🥳🥸😎🤓🧐😕🫤😟🙁☹️😮😯😲😳🥺🥹😦😧😨😰😥😢😭😱😖😣😞😓😩😫🥱😤😡😠🤬😈👿💀☠️💩🤡👹👺👻👽👾🤖'.match(/./gu),
+    'Gestures': '👋🤚🖐️✋🖖🫱🫲🫳🫴👌🤌🤏✌️🤞🫰🤟🤘🤙👈👉👆🖕👇☝️🫵👍👎✊👊🤛🤜👏🙌🫶👐🤲🤝🙏✍️💅🤳💪🦾🦿🦵🦶👂🦻👃🧠🫀🫁🦷🦴👀👁️👅👄🫦'.match(/./gu),
+    'People': '👶🧒👦👧🧑👱👨🧔👩🧓👴👵🙍🙎🙅🙆💁🙋🧏🙇🤦🤷👮🕵️💂🥷👷🫅🤴👸👳👲🧕🤵👰🤰🫃🫄🤱👼🎅🤶🦸🦹🧙🧚🧛🧜🧝🧞🧟💆💇🚶🧍🧎🏃💃🕺'.match(/./gu),
+    'Animals': '🐶🐱🐭🐹🐰🦊🐻🐼🐻‍❄️🐨🐯🦁🐮🐷🐸🐵🙈🙉🙊🐒🐔🐧🐦🐤🐣🐥🦆🦅🦉🦇🐺🐗🐴🦄🐝🪱🐛🦋🐌🐞🐜🪰🪲🪳🦟🦗🕷️🕸️🦂🐢🐍🦎🦖🦕🐙🦑🦐🦞🦀🐡🐠🐟🐬🐳🐋🦈🦭🐊🐅🐆🦓🦍🦧🐘🦛🦏🐪🐫🦒🦘🦬🐃🐂🐄🐎🐖🐏🐑🦙🐐🦌🐕🐩🦮🐈🐈‍⬛🪶🐓🦃🦤🦚🦜🦢🦩🕊️🐇🦝🦨🦡🦫🦦🦥🐁🐀🐿️🦔'.match(/./gu),
+    'Nature': '🌵🎄🌲🌳🌴🪵🌱🌿☘️🍀🎍🪴🎋🍃🍂🍁🪺🪹🍄🌾💐🌷🌹🥀🌺🌸🌼🌻🌞🌝🌛🌜🌚🌕🌖🌗🌘🌑🌒🌓🌔🌙🌎🌍🌏🪐💫⭐🌟✨⚡☄️💥🔥🌪️🌈☀️🌤️⛅🌥️☁️🌦️🌧️⛈️🌩️🌨️❄️☃️⛄🌬️💨💧💦🫧☔☂️🌊🌫️'.match(/./gu),
+    'Food': '🍏🍎🍐🍊🍋🍌🍉🍇🍓🫐🍈🍒🍑🥭🍍🥥🥝🍅🍆🥑🥦🥬🥒🌶️🫑🌽🥕🫒🧄🧅🥔🍠🫘🥐🍞🥖🥨🧀🥚🍳🧈🥞🧇🥓🥩🍗🍖🌭🍔🍟🍕🫓🥪🥙🧆🌮🌯🫔🥗🥘🫕🥫🍝🍜🍲🍛🍣🍱🥟🦪🍤🍙🍚🍘🍥🥠🥮🍢🍡🍧🍨🍦🥧🧁🍰🎂🍮🍭🍬🍫🍿🍩🍪🌰🥜🍯🥛🍼🫖☕🍵🧃🥤🧋🍶🍺🍻🥂🍷🥃🍸🍹🧉🍾🧊'.match(/./gu),
+    'Activities': '⚽🏀🏈⚾🥎🎾🏐🏉🥏🎱🪀🏓🏸🏒🏑🥍🏏🪃🥅⛳🪁🏹🎣🤿🥊🥋🎽🛹🛼🛷⛸️🥌🎿🏆🥇🥈🥉🏅🎖️🏵️🎗️🎪🤹🎭🩰🎨🎬🎤🎧🎼🎹🥁🪘🎷🎺🪗🎸🪕🎻🪈🎲♟️🎯🎳🎮🕹️🧩🪅🪩'.match(/./gu),
+    'Objects': '⌚📱💻⌨️🖥️🖨️🖱️💽💾💿📀📼📷📹🎥📽️📞☎️📟📠📺📻🎙️🎚️🎛️🧭⏱️⏲️⏰🕰️⌛⏳📡🔋🔌💡🔦🕯️🧯💸💵💴💶💷🪙💰💳💎⚖️🧰🔧🔨⛏️🔩⚙️🧱⛓️🧲🔫💣🧨🔪🗡️⚔️🛡️⚰️⚱️🏺🔮📿🧿💈⚗️🔭🔬🩹🩺💊💉🧬🦠🧫🧪🌡️🧹🧺🧻🚽🧼🧽🧴🛎️🔑🗝️🚪🪑🛋️🛏️🧸🖼️🛍️🛒🎁🎈🎀🎊🎉🏮✉️📩📨📧💌📥📤📦🏷️📪📫📬📭📮📯📜📃📄📑🧾📊📈📉📇📋📁📂📰📓📔📒📕📗📘📙📚📖🔖🔗📎📐📏📌📍✂️🖊️🖋️✒️🖌️🖍️📝✏️🔍🔎🔏🔐🔒🔓'.match(/./gu),
+    'Travel': '🚗🚕🚙🚌🚎🏎️🚓🚑🚒🚐🛻🚚🚛🚜🛴🚲🛵🏍️🛺🚨🚔🚍🚘🚖🛞🚡🚠🚟🚃🚋🚞🚝🚄🚅🚈🚂🚆🚇🚊🚉✈️🛫🛬🛩️💺🛰️🚀🛸🚁🛶⛵🚤🛥️🛳️⛴️🚢⚓⛽🚧🚦🚥🚏🗺️🗿🗽🗼🏰🏯🏟️🎡🎢🎠⛲⛱️🏖️🏝️🏜️🌋⛰️🏔️🗻🏕️⛺🛖🏠🏡🏘️🏚️🏗️🏭🏢🏬🏣🏤🏥🏦🏨🏪🏫🏩💒🏛️⛪🕌🕍🛕🕋⛩️🛤️🛣️🌅🌄🌠🎇🎆🌇🌆🏙️🌃🌌🌉🌁'.match(/./gu)
+  };
+
+  const SYMBOL_DATA = {
+    'Hearts': '❤️🧡💛💚💙💜🖤🤍🤎❤️‍🔥❤️‍🩹💔❣️💕💞💓💗💖💘💝💟🩷🩵🩶'.match(/./gu),
+    'Arrows': ['⬆️','↗️','➡️','↘️','⬇️','↙️','⬅️','↖️','↕️','↔️','↩️','↪️','⤴️','⤵️','🔃','🔄','🔙','🔚','🔛','🔜','🔝'],
+    'Geometric': '🔴🟠🟡🟢🔵🟣🟤⚫⚪🟥🟧🟨🟩🟦🟪🟫⬛⬜◼️◻️◾◽▪️▫️🔶🔷🔸🔹🔺🔻💠🔘🔳🔲'.match(/./gu),
+    'Math': ['➕','➖','✖️','➗','♾️','‼️','⁉️','❓','❔','❕','❗'],
+    'Misc': ['✅','☑️','✔️','❌','❎','✳️','✴️','❇️','©️','®️','™️','#️⃣','*️⃣','0️⃣','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟','ℹ️']
+  };
+
+  const FLAG_DATA = '🏁🚩🎌🏴🏳️🏳️‍🌈🏳️‍⚧️🏴‍☠️🇦🇫🇦🇱🇩🇿🇦🇸🇦🇩🇦🇴🇦🇮🇦🇬🇦🇷🇦🇲🇦🇼🇦🇺🇦🇹🇦🇿🇧🇸🇧🇭🇧🇩🇧🇧🇧🇾🇧🇪🇧🇿🇧🇯🇧🇲🇧🇹🇧🇴🇧🇦🇧🇼🇧🇷🇧🇳🇧🇬🇧🇫🇧🇮🇰🇭🇨🇲🇨🇦🇨🇻🇨🇫🇹🇩🇨🇱🇨🇳🇨🇴🇰🇲🇨🇬🇨🇩🇨🇷🇭🇷🇨🇺🇨🇾🇨🇿🇩🇰🇩🇯🇩🇲🇩🇴🇪🇨🇪🇬🇸🇻🇬🇶🇪🇷🇪🇪🇪🇸🇿🇪🇹🇫🇯🇫🇮🇫🇷🇬🇦🇬🇲🇬🇪🇩🇪🇬🇭🇬🇷🇬🇩🇬🇹🇬🇳🇬🇼🇬🇾🇭🇹🇭🇳🇭🇺🇮🇸🇮🇳🇮🇩🇮🇷🇮🇶🇮🇪🇮🇱🇮🇹🇯🇲🇯🇵🇯🇴🇰🇿🇰🇪🇰🇮🇽🇰🇰🇼🇰🇬🇱🇦🇱🇻🇱🇧🇱🇸🇱🇷🇱🇾🇱🇮🇱🇹🇱🇺🇲🇬🇲🇼🇲🇾🇲🇻🇲🇱🇲🇹🇲🇭🇲🇷🇲🇺🇲🇽🇫🇲🇲🇩🇲🇨🇲🇳🇲🇪🇲🇦🇲🇿🇲🇲🇳🇦🇳🇷🇳🇵🇳🇱🇳🇿🇳🇮🇳🇪🇳🇬🇰🇵🇲🇰🇳🇴🇴🇲🇵🇰🇵🇼🇵🇸🇵🇦🇵🇬🇵🇾🇵🇪🇵🇭🇵🇱🇵🇹🇶🇦🇷🇴🇷🇺🇷🇼🇸🇦🇸🇳🇷🇸🇸🇨🇸🇱🇸🇬🇸🇰🇸🇮🇸🇧🇸🇴🇿🇦🇰🇷🇸🇸🇪🇸🇱🇰🇸🇩🇸🇷🇸🇪🇨🇭🇸🇾🇹🇼🇹🇯🇹🇿🇹🇭🇹🇱🇹🇬🇹🇴🇹🇹🇹🇳🇹🇷🇹🇲🇹🇻🇺🇬🇺🇦🇦🇪🇬🇧🇺🇸🇺🇾🇺🇿🇻🇺🇻🇪🇻🇳🇾🇪🇿🇲🇿🇼'.match(/./gu);
+
+const KAOMOJI = {
+  'Happy': ['(◕‿◕)', '(｡◕‿◕｡)', '(◠‿◠)', '(✿◠‿◠)', '(◡‿◡)', 'ʕ•ᴥ•ʔ', '(ﾉ◕ヮ◕)ﾉ*:･ﾟ✧', '(≧◡≦)', '(◕ᴗ◕✿)', '☆*:.｡.o(≧▽≦)o.｡.:*☆', '(◍•ᴗ•◍)', '(灬º‿º灬)♡', '( ´ ▽ ` )ﾉ', '(o˘◡˘o)', '(≧▽≦)', '(⌒‿⌒)', '(｡･ω･｡)', '(´ ▽ ` )', '( ´ ω ` )', '｡ﾟ(TヮT)ﾟ｡', '(ﾉ>ω<)ﾉ', '(｡♥‿♥｡)', 'ヾ(≧▽≦*)o', '(≧◡≦) ', '(˘︶˘).｡.:*♡', '(ू•ᴗ•ू❁)', '(◠‿◠)', '(｡･ω･｡)ﾉ♡', '( ´ ∀ `)ノ', '(*≧ω≦*)', 'ヾ(≧▽≦*)o', '٩(◕‿◕｡)۶', '(●\'◡\'●)', '(´• ω •`)', '(◠˘◠)', '(˵ ͡° ͜ʖ ͡°˵)', '( ´ ▽ ` )ﾉ', '＼(≧▽≦)／', '(⁀ᗢ⁀)', '(≖ᴗ≖✿)', '(◠‿◠✿)', '(人´∀`)☆', '(ﾉ^_^)ﾉ', '(*^‿^*)', '( ´ ꒳ ` )', '( ˘ ³˘)♥', '(⌬̈⃝)', '( ˘ᴥ˘ )', '(˶‾᷄ ⁻̫ ‾᷅˵)', '(ᵔᴥᵔ)', '(◕‿◕)', '(≧◠‿◠≦)', '(✿ ◕‿◕)', '(◕‿◕✿)', '⊂(◉‿◉)つ', '(◉‿◉)', '(｡◕‿◕｡)', '(◠‿◠)', '(◕ᴗ◕✿)', '(｡◕‿◕｡)', '(★^O^★)', '(^_^)b', '(＾▽＾)', 'ヾ(＾-＾)ノ', '(´ ▽ ` )', '(●\'◡\'●)', '╰(´︶`)╯', '( ´ ▽ ` )b', '٩(◕‿◕｡)۶', '(⌒‿⌒)', 'ヾ(●´∀｀●)', '(●\'◡\'●)', '(*^▽^*)', '(≧◡≦)', '(✿╹◡╹)', '(✧ω✧)', '(*≧ω≦*)', '(◕‿◕)', '(*≧▽≦)', 'ヾ(≧▽≦*)o', '(≧◡≦)', '(✯ᴗ✯)', 'ヾ(◍°∇°◍)ﾉﾞ', '(◠‿◠)', '(◕‿◕)', '(｡◕‿◕｡)', '(*^▽^*)', '(*・ω・)ﾉ', '(￣▽￣)ノ', 'ヾ(≧▽≦*)o', '(*´ω｀*)', '(´･ω･`)', '(◕‿◕)', 'ヾ(・ω・`)'],
+  'Sad': ['(╥_╥)', '(T_T)', '(;_;)', '(ノ_<。)', '(´;ω;`)', '(ಥ﹏ಥ)', '(っ˘̩╭╮˘̩)っ', '(｡•́︿•̀｡)', '(◞‸◟)', '(´•ω•̥`)', '(๑•́ ₃ •̀๑)', '(｡•́︿•̀｡)', '(╥﹏╥)', '(っ˘̩╭╮˘̩)っ', '(ノAノ)', '( ´_ゝ`)', '( ╥ω╥ )', '(╯_╰)', '(･ω･)つ⊂(･ω･)', '(҂◡_◡)', '(⋋▂⋋)', '(ꈍᴗꈍ)', '(≚ᄌ≚)ƶƵ', '( ︶︿︶)', '(¬_¬)', '( ⟩ ⟩ ⟩', '(ꐦ°᷄д°᷅)', '(ꐦ𝅒_𝅒) ', '(ꐦ╭╮𝅒_𝅒)', '( 𝙨𝙤𝙗𝙨 )', '( ≧Д≦)', '( 🔴_🔴 )', '( ´_ゝ`)', '( ←_← )', '( →_→ )', '( ⁽₍₍₍_⁾₎₎₎ )', '(◞‸◟)', '(ㄒoㄒ)', '(T⌓T)', '(჻ጒ౪჻ )', '(₍₍⁽⁽(ી₍₍⁽⁽(ી ซง₎₎⁾⁾₎₎⁾⁾', '(u‿ฺu)', '( ◡︵◡)', '( ´_ゝ`)', '(μ_μ)', '(꒪⌓꒪)', '(｡•́︿•̀｡)', '(╥﹏╥)', '(◞‸◟)', '(;﹏;)', '(︶︹︶)', '(っ˘̩╭╮˘̩)っ', '(´°̥̥̥̥̥̥̥̥ω°̥̥̥̥̥̥̥̥`)', '( ✋˘ 😪 ˘ )', '(ー_ー )!!', '( ✋˘ ˘ )', '( ˘⌣˘ )', '( ˘︹˘ )', '(；′⌒`)', '(´胱圩鄄', '(T⌓T)', '(≖_≖ )', '( ﾟдﾟ)', '( bothered )', '(noise)', '(；￣Д￣)', '(・_・;)', '(・・;)', '(￣～￣;)', '(＠_＠)', '(ToT)', '(T_T)', '(T_T)', '(T_T)', '(_ _)', '．．●', '(°°)', '(°△°)', '(°ω°)', '(´･･`)', '(´・ω・`)', '(´・ω・`)', '(´・ω・`)', '(｡-_-)', '(´°̥̥̥̥̥̥̥̥ω°̥̥̥̥̥̥̥̥`)', '(Ｔ▽Ｔ)', '(T_T)', '(;_;)', '(╥_╥)', '(╯°□°)╯︵ ┻━┻', '┻━┻ ︵ ヽ(°□° )ノ ︵ ┻━┻'],
+  'Angry': ['(╬ Ò﹏Ó)', '(ﾉಠ益ಠ)ﾉ', '(ノ`Д´)ノ', '(`Д´)', '(≖_≖ )', '(눈_눈)', 'ヽ(`Д´)ﾉ', '(｡•ˇ‸ˇ•｡)', '(>人<)', '(¬_¬)', '(沉思)', '(ꐦ°᷄д°᷅)', '(╬ﾟ◥益◤ﾟ)', '(ノಠ ∩ಠ)ノ', '(≧Д≦)', '(ノ°△°)ノ︵┻━┻', '┻━┻ ︵ヽ(`Д´)ﾉ︵ ┻━┻', '(╯°□°)╯︵ ┻━┻', '╭∩╮（︶︿︶）╭∩╮', '(ಠ_ಠ)┌∩┐', '(ノಠ益ಠ)ノ彡┻━┻', '(╬ Ò﹏Ó)', '(ꐦ°᷄д°᷅)', '( ≧Д≦)', '(ꐦ╭╮𝅒_𝅒)', '(O_O)', '(＃＞＜)', '(＞＜)', '(＞﹏＜)', '( ` ω ´ )', '( ` ω ´ )', '( ` ω ´ )', '٩(╬ʘ益ʘ╬)۶', '(◞≼◉◞ ༽ ✧', '( ` ∇ ´ )', '(メ▼へ▼)ノ', '( ` Д ´)', 'o(>< )o', 'o(>< )o', 'ε=ε=ε=ε=ε=ε=┌(;￣◇￣)┘', 'ε=ε=ε=ε=ε=ε=┌(;￣◇￣)┘', '(ノಠ益ಠ)ノ彡┻━┻', '(╬ Ò﹏Ó)', '(ꐦ°᷄д°᷅)', 'ε=ε=ε=ε=ε=ε=┌(;￣◇￣)┘', 'ε=ε=ε=┌( >_<)┘', 'ε=ε=ε=┌( >_<)┘', '٩(╬ʘ益ʘ╬)۶', '(҂` ﾛ ´)╬', '(҂` ﾛ ´)╬', '୧(๑ ಠ 益 ಠ)૭', '୧(๑ ಠ 益 ಠ)૭', 'ψ(｀∇´)ψ', 'ψ(｀∇´)ψ', '(ノ ` Д)ノ', '(ノ ` Д)ノ', '(；￣Д￣)', '(；￣Д￣)', '( ` Д´)', '( ` Д´)', '༼ つ ◕_◕ ༽つ', '༼ つ ◕_◕ ༽つ', '( ` ω ´ )', '( ` ω ´ )', '( ` ∇ ´ )', '( ` ∇ ´ )', '(メ▼へ▼)ノ', '(メ▼へ▼)ノ', '(ꈍ﹃ꈍ)', '(ꈍ﹃ꈍ)', '(ꐦ°᷄д°᷅)', '(ꐦ°᷄д°᷅)', '٩(╬ʘ益ʘ╬)۶', '٩(╬ʘ益ʘ╬)۶', 'o(>< )o', 'o(>< )o'],
+  'Love': ['(♡°▽°♡)', '(◕‿◕)♡', '(✿ ♥‿♥)', '♡(ŐωŐ人)', '(´,,•ω•,,)♡', '(◍•ᴗ•◍)❤', '(灬♥ω♥灬)', '(◕ᴗ◕✿)', '(≧◡≦)♡', '( ´ ∀ `)ノ～ ♡', '♡＾▽＾♡', '(ღ˘⌣˘ღ)', '( ˘ ³˘)♥', '( ⚆ _ ⚆ )', '(♡˙︶˙♡)', '(♥ω♥*)', '(❤ω❤)', '( ´ ▽ ` )ﾉ♥', '(ɔˆ ³(ˆ⌣ˆc)', '(◡‿◡✿)', '( ˘ᴥ˘ )❤', '(¢aldara)', '(´,,•ω•,,)', '♡(˃͈ દ ˂͈ ༶ )', '( ˘ ³˘)♥', '( ´ ∀ `)♥', '( ´ ▽ ` )♥', '(´,,•ω•,,)♡', '(´,,•ω•,,)♡', '(◍•ᴗ•◍)❤', '(◍•ᴗ•◍)❤', '( ´ ∀ `)♥', '(*^^*)', '(◕‿◕)♡', '( ´ ▽ ` )b', '(*^▽^*)', '(*^▽^*)', '(✿ ♥‿♥)', '(*´ω｀*)', '(*´ω｀*)', '(*´ω｀*)', '( ´ ▽ ` )♥', '( ´ ▽ ` )♥', '(｡♥‿♥｡)', '(｡♥‿♥｡)', '(｡♥‿♥｡)', '( ´ ∀ `)♥', '( ´ ∀ `)♥', '( ´ ∀ `)♥', '⊂(◉‿◉)つ', '(づ￣ ³￣)づ', '(づ￣ ³￣)づ', '(っ◔◡◔)っ ♥', '(っ◔◡◔)っ ♥', '( ´ ▽ ` )b', '(*^▽^*)', '(◕‿◕)♡', '(*^^*)', '(*^^*)', '(◕‿◕)♡', '(*^^*)', '(*^^*)', '(◕‿◕)♡', '(◕‿◕)♡', '( ´ ∀ `)♥', '( ´ ∀ `)♥', '( ´ ▽ ` )b', '(*^▽^*)', '(◕‿◕)♡', '(*^^*)', '(✿ ◕‿◕)', '(✿ ◕‿◕)', '(✿ ◕‿◕)', '(✿ ◕‿◕)', '(✿ ◕‿◕)', '(✿ ◕‿◕)', '(✿ ◕‿◕)', '(✿ ◕‿◕)', '(✿ ◕‿◕)', '(✿ ◕‿◕)', '(✿ ◕‿◕)', '(✿ ◕‿◕)', '(✿ ◕‿◕)', '(✿ ◕‿◕)', '(✿ ◕‿◕)', '(✿ ◕‿◕)'],
+  'Actions': ['┻━┻ ︵ヽ(`Д´)ﾉ︵ ┻━┻', '(╯°□°)╯︵ ┻━┻', '┬─┬ノ( º _ ºノ)', '¯\\_(ツ)_/¯', '(ノ°∀°)ノ⌒･*:.｡', 'ᕕ( ᐛ )ᕗ', '(•̀ᴗ•́)و', '(ง •̀_•́)ง', '(☞ﾟヮﾟ)☞', '☜(ﾟヮﾟ☜)', '(⌐■_■)', '(•_•) ( •_•)>⌐■-■ (⌐■_■)', 'ヽ(•‿•)ノ', '(¬‿¬)', '( ͡° ͜ʖ ͡°)', '╭∩╮（︶︿︶）╭∩╮', '(ಠ_ಠ)┌∩┐', '┬─┬ ノ( ゜-゜ノ)', '(╯°□°)╯︵ ┻━┻ ︵ ┻━┻', '┻━┻ ︵ ¯\\ (ツ)/ ︵ ┻━┻', '(ノಠ ∀ ಠ)ノ⌒･*:.｡', '(ಠ_ಠ)ಠ_ಠ)', '(ಠ‿ಠ)ಠ_ಠ)', '( ͡ಠ ʖ̯ ͡ಠ)', '┬─┬ ︵ /(.□. \\)', '┻━┻ ︵ ヽ(°□° )ノ ︵ ┻━┻', '┻━┻ ︵ ¯\\( °□° )/¯ ︵ ┻━┻', '(ノಥ,_｣ಥ)ノ彡┻━┻', '┬─┬ ︵( /(.□. \\))', '(╯°□°）╯︵ ┻━┻', '(╯°Д°）╯︵ /(.□ . \\)', '┬─┬ ノ( º _ ºノ )', '┬─┬ ノ( ゜-゜ノ)', '( º _ º )', '( º _ º )', '( º _ º )', '╭∩╮(Ο_Ο)╭∩╮', '╭∩╮(Ο_Ο)╭∩╮', '╭∩╮(Ο_Ο)╭∩╮', '(☞ﾟヮﾟ)☞', '(☞ﾟヮﾟ)☞', '☜(ﾟヮﾟ☜)', '☜(ﾟヮﾟ☜)', '☜(ﾟヮﾟ☜)', 'ʕ •ᴥ• ʔ', 'ʕ •ᴥ• ʔ', 'ʕ •ᴥ• ʔ', '(づ￣ ³￣)づ', '(づ￣ ³￣)づ', '(つ≧▽≦)つ', '(つ≧▽≦)つ', '(つ≧▽≦)つ', '(つ≧▽≦)つ', '(ﾉ◕ヮ◕)ﾉ*:･ﾟ✧', '(ﾉ◕ヮ◕)ﾉ*:･ﾟ✧', '(*・ω・)ﾉ', '(*・ω・)ﾉ', '(ノ°∀°)ノ', '(ノ°∀°)ノ', '(ノ°∀°)ノ', '(ノ°∀°)ノ', 'ヾ(・ω・`)', 'ヾ(・ω・`)', '( ´ ▽ ` )ﾉ', '( ´ ▽ ` )ﾉ', '( ´ ▽ ` )ﾉ', '( ´ ▽ ` )ﾉ', '( ´ ▽ ` )b', '( ´ ▽ ` )b', 'ε=ε=ε=ε=ε=ε=┌(;￣◇￣)┘', 'ε=ε=ε=ε=ε=ε=┌(;￣◇￣)┘', 'ε=ε=ε=ε=ε=ε=┌(;￣◇￣)┘', 'ε=ε=ε=ε=ε=ε=┌(;￣◇￣)┘'],
+  'Animals': ['ʕ•ᴥ•ʔ', '(=^・ω・^=)', '(=^-ω-^=)', 'ʕ ꈍᴥꈍʔ', '(◕ᴥ◕)', 'U•ᴥ•U', '(ΦωΦ)', '₍ᐢ..ᐢ₎', 'ฅ^•ﻌ•^ฅ', '(🐕)', '(ㅇㅅㅇ❀)', '( ˘ᴥ˘ )', '(◉θ◉)', '(=o_o=)', 'ᶘ ᵒᴥᵒᶅ', 'ʕ̯•͡ᴥ•͡ʔ', 'ʕ>Toᴥo<ʔ', '(ᵔᴥᵔ)', 'ʕ•̫͡•ʔ', 'ʕ•ᴥ•ʔ', 'ʕ •ᴥ• ʔ', 'ʕ•́•̀ʔ', 'ʕ◉ᴥ◉ʔ', 'ʕ⁰̈ʔ', 'ʕಠᴥಠʔ', 'ʕ•̠͡•ʔ', 'ʕ•͡ˑ͓•ʔ', 'ʕ•̫͡•ʔ', 'ʕ•͓͡•ʔ', 'ʕꈍᴥꈍʔ', 'ʕ≧ᴥ≦ʔ', 'ʕつ◕ᴥ◕ʔつ', 'ʕง•ᴥ•ʔง', 'ʕᵔᴥᵔʔ', '(=｀ω´=)', 'ฅ(• ɪ •)ฅ', 'ฅ(• wget •)ฅ', 'ฅ(=๏ᆺ๏=)ฅ', '(=^-ω-^=)', '(=^ｪ^=)', '(=^･･^=)', '(=^･ｪ･^=)', 'ฅ(•ㅅ•❀)ฅ', 'ฅ(•ㅅ•)ฅ', 'ฅ(×ω×)ฅ', 'ฅ(˘ω˘ )ฅ', 'ฅ( ꒪◦꒪)ฅ', 'ฅ(ﾐ⚈ ﻌ ⚈ﾐ)ฅ', 'ฅ(๑*д*๑)ฅ', 'ฅ(๑˃ᴗ˂)ฅ', 'ฅ(๑˙o˙๑)ฅ', 'ฅ(ﾐ◕ ༝ ◕ﾐ)ฅ', 'ฅ(ﾐ◉ ਊ ◉ﾐ)ฅ', 'ฅ(ﾐ⚈ llvm ⚈ﾐ)ฅ', 'ฅ(=ʘᆽʘ=)ฅ', 'ฅ(>_<)ฅ', '(=ﾟ･ﾟ=)ｿ', '(=;ﾟ∀ﾟ=)', '(=´∀｀)=', 'U・x・U', 'U・ﻌ・U', 'U・ᴥ・U', 'U^ｪ^U', 'V●ᴥ●V', '( ˘ᴥ˘ )', '( ˘ᴥ˘ )', '( ˘ᴥ˘ )', 'ʕ•ᴥ•ʔ', 'ʕ•ᴥ•ʔ', 'ʕ•ᴥ•ʔ', '(=^・ω・^=)', '(=^・ω・^=)', '(=^・ω・^=)', '(=^-ω-^=)', '(=^-ω-^=)', '(=^-ω-^=)', 'ʕ ꈍᴥꈍʔ', 'ʕ ꈍᴥꈍʔ', 'ʕ ꈍᴥꈍʔ'],
+  'Lenny': ['( ͡° ͜ʖ ͡°)', '( ͡°( ͡° ͜ʖ( ͡° ͜ʖ ͡°)ʖ ͡°) ͡°)', '( ͡° ʖ̯ ͡°)', '( ͡ಠ ʖ̯ ͡ಠ)', '( ͡⚆ ͜ʖ ͡⚆)', '( ͡~ ͜ʖ ͡°)', '( ͡ʘ╭͜ʖ╮͡ʘ)', '( ͡°╭͜ʖ╮͡°)', '( ͝° ͜ʖ͡°)', '( ͡° ͜ʖ ͡°)( ͡° ͜ʖ ͡°)', 'ᕦ( ͡° ͜ʖ ͡°)ᕤ', '( ͡°ᴥ ͡°)', '( ͡ಠ╭͜ʖ╮͡ಠ)', '( ͡° ͜ʖ ͡°)ﾉ⌐■-■', '( ͡° ͜ʖ ͡°) □ -□ ', '(つ ͡° ͜ʖ ͡°)つ', 'ʕ •ᴥ• ʔ', '( ͡° ͜ʖ ͡°)ノ', '( ͡° ͜ʖ ͡°)ノ', '( ͡° ͜ʖ ͡°)ノ', '( ͡° ͜ʖ ͡°)ノ', '( ͡° ͜ʖ ͡°)ノ', '( ͡° ͜ʖ ͡°)ノ', '( ͡° ͜ʖ ͡°)ノ', '( ͡° ͜ʖ ͡°)ノ', '( ͡° ͜ʖ ͡°)ノ', '( ͡° ͜ʖ ͡°)ノ', '( ͡° ͜ʖ ͡°)ノ', '( ͡° ͜ʖ ͡°)ノ', '( ͡° ͜ʖ ͡°)ノ', '( ͡° ͜ʖ ͡°)ノ', '( ͡° ͜ʖ ͡°)ノ'],
+  'Table': ['┬─┬ノ( º _ ºノ)', '┬─┬ ︵ /(.□. \\)', '┻━┻ ︵ ヽ(°□° )ノ ︵ ┻━┻', '┻━┻ ︵ ¯\\( °□° )/¯ ︵ ┻━┻', '(╯°□°)╯︵ ┻━┻ ', '(ノಠ益ಠ)ノ彡┻━┻', '(╯°□°)╯︵ ┻━┻ ︵ ┻━┻', '┻━┻ ︵ヽ(`Д´)ﾉ︵ ┻━┻', '┬─┬ノ(ಠ_ಠノ)', '┻━┻ ︵ ¯\\_༼ ᴼ_o ༽_/¯ ︵ ┻━┻', '(ノಥ,_｣ಥ)ノ彡┻━┻', '┬─┬ ︵(/ .o.\\/)'],
+  'Surprised': ['(☉_☉)', '(º_º)', '(⊙_☉)', '(⊙_⊙)', '(✧ω✧)', '(✧_✧)', '(O_O)', '(o_O)', '(°o°)', '(°ロ°)', '(O.o)', '(o_O)', '(๏_๏)', '(⊚_⊚)', '(◔_◔)', '(◉_◉)', '(◔ ‸ ◔)', '( : ౦ ‸ ౦ : )', '(O_o)', '(o_O)', '(o_O)', '(o_O)', '(o_O)', '(o_O)', '(o_O)', '(o_O)', '(o_O)', '(o_O)', '(o_O)', '(o_O)', '(o_O)', '(o_O)'],
+  'Helpless': ['¯\\_(ツ)_/¯', '╮(╯_╰)╭', '¯\\_(⊙_⊙)_/¯', '¯\\_( ͡° ͜ʖ ͡°)_/¯', '¯\\_(☯ᴥ☯)_/¯', '¯\\_(⊡_⊡)_/¯', '╮(╯▽╰)╭', '┐(´д`)┌', '┐(´～`)┌', '┐(´ー`)┌', '╮(╯_╰)╭', '¯\\_(ツ)_/¯', '¯\\_(ツ)_/¯', '¯\\_(ツ)_/¯', '¯\\_(ツ)_/¯', '¯\\_(ツ)_/¯', '¯\\_(ツ)_/¯', '¯\\_(ツ)_/¯', '¯\\_(ツ)_/¯', '¯\\_(ツ)_/¯', '¯\\_(ツ)_/¯', '¯\\_(ツ)_/¯', '¯\\_(ツ)_/¯', '¯\\_(ツ)_/¯', '¯\\_(ツ)_/¯', '¯\\_(ツ)_/¯', '¯\\_(ツ)_/¯', '¯\\_(ツ)_/¯', '¯\\_(ツ)_/¯', '¯\\_(ツ)_/¯'],
+  'Other': ['(づ￣ ³￣)づ', '(つ≧▽≦)つ', '(ノ^_^)ノ', 'ヾ(・ω・`)', '( ´ ▽ ` )b', '(*^▽^*)', '(◕‿◕)♡', '(◍•ᴗ•◍)❤', 'ε=ε=ε=ε=ε=ε=┌(;￣◇￣)┘', 'ψ(｀∇´)ψ', '( ´ ∀ `)♥', '( ˘ ³˘)♥', '⊂(◉‿◉)つ', 'ヾ(●´∀｀●)', '(*´ω｀*)', '(´･ω･`)', '( •ω• )', '(*_*)', '(ू˃̣̣̥̥̥̣̣̥‸˂̣̣̥̥̥̣̣̥ )', 'φ(゜▽゜*)♪', '♪(´ε` )', '(＾▽＾)', '(^_^)b', 'ヾ(☆▽☆)', '(o_0)!', '(O_o)', '( ﾟヮﾟ)', '(; ͡° ͜ʖ ͡°)', '(>人<)', '(X_X)', '(×_×)', '(×_×;）', '(*_*)', '(・・;)', '(￣～￣;)', '(＠_＠)', '(o_O)', '(O_o)', '(o_o)', '(O_O)', '(o.O)', '(O.o)', '( :o)', '( :O)', '( :0)', '(:0)', '( :0 )', '( :O )', '( :o )', '( :0)', '( :O)', '( :o)']
+};
+
+const ASCII_ART = [
+  ':)', ':(', ':D', ':P', ';)', ':O', 'XD', 'B)', ':|', ':/', '>:(', ':\'(', '<3', '\\o/', '-_-', '^_^', 'O_O', '>_<', 'T_T', 'UwU', 'OwO', ':^)',
+  '¯\\_(ツ)_/¯', '( ͡° ͜ʖ ͡°)', 'ಠ_ಠ', '(☞ﾟヮﾟ)☞', '☜(ﾟヮﾟ☜)', '(⌐■_■)', 'ヽ(•‿•)ノ', '(¬‿¬)', 'ʕ•ᴥ•ʔ', '(つゝ´)', '(◕‿◕)', '(≧◡≦)', '(ง’̀-‘́)ง',
+  '(╯°□°）╯︵ ┻━┻', '┬─┬ ノ( ゜-゜ノ)', '┻━┻ ︵ヽ(`Д´)ﾉ︵ ┻━┻', '( •_•) ( •_•)>⌐■-■ (⌐■_■)', '(╮°-°)╮┳━┳', '(╯°□°)╯︵ ┻━┻ ︵ ┻━┻',
+  '( ͡ᵔ ͜ʖ ͡ᵔ )', '( ͝° ͜ʖ͡°)', '( ͡ʘ╭͜ʖ╮͡ʘ)', '(͡° ͜ ͡°)', 'ʕ̯•͡ᴥ•͡ʔ', 'ᶘ ᵒᴥᵒᶅ', 'ʕ•ᴥ•ʔ', 'ʕ ꈍᴥꈍʔ', 'ʕ̯•͡ᴥ•͡ʔ',
+  'ヽ(=^･ω･^=)丿', 'UwU', 'OwO', '>w<', '.w.', 'nwn', '^w^', '◕‿◕', 'ಠ_ಠ', 'ಠ益ಠ', 'ಥ_ಥ', '( ≖‿≖)', '(¬‿¬ )',
+  '( ˘ ɜ˘)♬', '♫♪.ılılıll|̲̅̅●̲̅̅|̲̅̅=̲̅̅|̲̅̅●̲̅̅|llılılı.♪♫', '(♬ ﾟ∀ﾟ)♪', 'ヾ(⌐■_■)ノ♪', '┏(・o･)┛♪┗ ( ･o･)┓♪',
+  '(▀̿Ĺ̯▀̿ ̿)', '( ͡° ͜ʖ ͡°)╭∩╮', '(╭☞•́•̀)╭☞', '(☞ﾟヮﾟ)☞', '☜(ﾟヮﾟ☜)', 'ಠ_ರೃ', 'ヽ(｀Д´)ﾉ', '( ͝° ͜ʖ͡°)',
+  'ᕦ(ò_óˇ)ᕤ', 'ᕙ(⇀‸↼‶)ᕗ', 'ᕕ( ᐛ )ᕗ', '(•̀ᴗ•́)و', '(ง •̀_•́)ง', '(ಥ﹏ಥ)', '(╯°□°）╯︵ ┻━┻', '(ノಠ益ಠ)ノ',
+  ':)', ':-)', ':(', ':-(', ':D', ':-D', ';)', ';-)', ':P', ':-P', ':p', ':-p', ':O', ':-O', ':o', ':-o', ':|', ':-|',
+  ':/', ':-/', ':S', ':-S', ':$', ':-$', 'XD', 'xD', 'Xd', 'xd', 'X-D', 'x-D', 'X=P', 'x=p', '>:(', '>:-(', '>:)', '>:-)',
+  '>:D', '>:-D', '>:P', '>:-P', ':\'(', ':\'[', ':\'-(', ':\'-[', ':*)', ':-*)', 'B)', 'B-)', '8)', '8-)', 'B-)',
+  ':3', ':-3', ':>', ':->', ':<', ':-<', ':]', ':-]', ':[', ':-[', ':}', ':-}', ':{', ':-{', '=)', '=]', '=D', '=P',
+  '=3', '=(', '=[', '=/', '=|', '=O', '=o', '=*', '=3', '=X', '=x', '>:3', '>:-3', '>:]', '>:-]', '>:[', '>:-[',
+  ';-);]', ';-[', ';-P', ';-p', ';-D', ';-O', ';-o', ';-3', ';-*', ';-X', ';-x',
+  '(o) (o)', '(O) (O)', '(o_O)', '(O_o)', '(o_o)', '(O_O)', '(o.O)', '(O.o)', '(o_0)', '(O_0)', '(0_o)', '(0_O)',
+  '(o.0)', '(O.0)', '(o.o)', '(O.O)', '(o_0)', '(O_0)',
+  '(@_@)', '(+_+)', '(x_x)', '(X_X)', '(*_*)', '(=_=)', '(-_-)', '(>_<)',
+  '<3', '</3', '<\\3', '<//3', '^_^', '^^', '^.^', '^_^', '^_~', '^_~', '^^;', '^^;', '^_^;', '^_^;', '^^;;', '^^;;', '^_^;;', '^_^;;',
+  'o_O', 'O_o', 'o.o', 'O.O', 'o_o', 'O_O', 'o.O', 'O.o', 'o_0', 'O_0', '0_o', '0_O', 'o.0', 'O.0', 'o.o', 'O.O','-_-',
+  'T_T', 'ToT', 'T_T', 'ToT', 'T_T', 'ToT', 'T_T', 'ToT', 'T_T', 'ToT', 'T_T', 'ToT', 'T_T', 'ToT', 'T_T',
+  'UwU', 'OwO', 'uwu', 'owo', 'UwU', 'OwO', 'uwu', 'owo', 'UwU', 'OwO', 'uwu', 'owo', 'UwU', 'OwO',
+  ':innocent:', ':angel:', ':wink:', ':blush:', ':slight_smile:', ':smile:', ':laughing:', ':relaxed:', ':smirk:', ':expressionless:',
+  ':unamused:', ':rolling_eyes:', ':thinking:', ':zipper_mouth:', ':neutral_face:', ':no_mouth:', ':dizzy_face:', ':grimacing:',
+  ':sweat_smile:', ':joy:', ':rofl:', ':smiley:', ':grinning:', ':smile:', ':grin:', ':laughing:', ':wink:', ':blush:',
+  ':yum:', ':stuck_out_tongue:', ':stuck_out_tongue_winking_eye:', ':stuck_out_tongue_closed_eyes:', ':disappointed:', ':worried:',
+  ':angry:', ':rage:', ':cry:', ':persevere:', ':triumph:', ':relieved:', ':sleepy:', ':tired_face:', ':dizzy:',
+  ':hushed:', ':open_mouth:', ':astonished:', ':scream:', ':scream_cat:', ':flushed:', ':frowning:', ':anguished:',
+  ':fearful:', ':cold_sweat:', ':disappointed_relieved:', ':weary:', ':sob:', ':confounded:', ':tired_face:',
+  ':mask:', ':thermometer_face:', ':head_bandage:', ':sleeping:', ':zzz:', ':poop:', ':smiling_imp:', ':imp:',
+  ':japanese_ogre:', ':japanese_goblin:', ':skull:', ':skull_and_crossbones:', ':ghost:', ':alien:', ':space_invader:',
+  ':robot:', ':jack_o_lantern:'
+];
+
+  // ═══════════════════════════════════════════════
+  //  STORAGE KEYS
+  // ═══════════════════════════════════════════════
+  const K = {
+    settings: 'uni_settings',
+    customCss: 'uni_custom_css',
+    apiGlobal: 'uni_api_global',
+    emojiCache: 'uni_emoji_cache_v3',
+    emojiCacheTs: 'uni_emoji_cache_ts_v3',
+    recent: 'uni_recent_v1',
+    favEmoji: 'uni_favoriteEmojis_v2',
+    favSticker: 'uni_favoriteStickers_v2',
+    favGif: 'uni_favoriteGifs_v2',
+    favEmojiLeg: 'uni_favoriteEmojis',
+    favStickerLeg: 'uni_favoriteStickers',
+    favGifLeg: 'uni_favoriteGifs',
+    favMeta: 'uni_favMeta_v1',
+    statsCache: 'uni_stats_cache_v1',
+    statsCacheTs: 'uni_stats_cache_ts_v1'
+  };
+
+  const CACHE_TTL = 6 * 3600000;
+  const STATS_TTL = 30 * 60000;
+
+  // ═══════════════════════════════════════════════
+  //  DEFAULTS
+  // ═══════════════════════════════════════════════
+  const DEFAULTS = {
+    emojiSize:48,stickerSize:256,gifSize:256,gifInsertSize:256,
+    gifPerPage:24,emojiPerPage:108,stickerPerPage:24,gifMinCol:128,
+    gifShowTitles:false,menuWidth:700,menuHeightPx:650,menuMaxHeightVh:75,
+    menuRadius:10,tileRadius:10,gapEmoji:8,gapLarge:10,
+    bg:'#2f3136',bgAlpha:1.0,text:'#dcddde',accent:'#5865f2',
+    borderColor:'#3a3b41',borderWidth:1,shadow:0.6,
+    scrollbarWidth:8, scrollbarThumb:'#454545', scrollbarTrack:'rgba(0,0,0,0.1)',
+    fontFamily:'"Segoe UI",Tahoma,Geneva,Verdana,sans-serif',
+    uiFontSize:14,tileBg:'#202225',hoverScale:1.05,glowStrength:10,
+    starColor:'#f1c40f',starBg:'rgba(0,0,0,.35)',starBorder:'#3a3b41',
+    starTop:6,starRight:6,starSize:28,starSmSize:22,
+    btnRadius:8,searchRadius:10,searchBorder:'#444',
+    paginationBg:'#202225',paginationActiveBg:'#5865f2',paginationColor:'#b9bbbe',
+    backdropBlur:0,zIndex:9999999,showGifStar:true,gifProvider:'local',
+    apiScope:'global',redditSubs:'gifs, HighQualityGifs, reactiongifs',
+    provTenor:true,provGiphy:true,provImgur:true,provTumblr:true,
+    redditIncludeImages:false,localGifUrls:'',
+    closeOnInsert:false,searchDebounceMs:200,
+    menuPositionX:'',menuPositionY:'',
+    insertFormat:'bbcode',insertTemplate:'[img=${size}]${url}[/img] ',
+    showTooltips:true,recentEnabled:true,recentMax:50,
+    tabOrder:'home,gifs,stickers,emojis',compactMode:false,
+    emojiSubTab:'custom',lazyLoadThreshold:150
+  };
+
+  // ═══════════════════════════════════════════════
+  //  SETTINGS LOAD
+  // ═══════════════════════════════════════════════
+  const S = Object.assign({}, DEFAULTS, (() => {
+    try { return JSON.parse(GM_Get(K.settings, '{}')); } catch { return {}; }
+  })());
+  const saveS = () => GM_Set(K.settings, JSON.stringify(S));
+
+  // ═══════════════════════════════════════════════
+  //  API KEYS (SECURE)
+  // ═══════════════════════════════════════════════
+  const apiSiteKey = `uni_api_site:${location.host}`;
+  const API_F = { giphy:'giphyKey', tenor:'tenorKey', imgur:'imgurClientId', tumblr:'tumblrKey' };
+
+  function readApi(sc) { try { return JSON.parse(GM_Get(sc==='site'?apiSiteKey:K.apiGlobal,'{}'))||{}; } catch { return {}; } }
+  function writeApi(sc,o) { GM_Set(sc==='site'?apiSiteKey:K.apiGlobal,JSON.stringify(o||{})); }
+  function getKey(p) { const f=API_F[p]; if(!f)return ''; const sc=S.apiScope||'global'; return readApi(sc)[f]||readApi(sc==='site'?'global':'site')[f]||''; }
+  function setKey(p,v) { const f=API_F[p]; if(!f)return; const sc=S.apiScope||'global'; const st=readApi(sc); st[f]=v||''; writeApi(sc,st); }
+  function hasKey(p) { return !!getKey(p); }
+  function maskK(k) { if(!k)return''; return k.length<=10?'●'.repeat(k.length):k.slice(0,4)+'●'.repeat(Math.max(4,k.length-8))+k.slice(-4); }
+
+  // ═══════════════════════════════════════════════
+  //  STATE
+  // ═══════════════════════════════════════════════
+  let allEmojis=[], currentEmojiPage=1;
+  let allStickers=[], currentStickerPage=1;
+  let allGifs=[], gifsLoaded=false, localGifStatus='';
+  let currentGifPage=1;
+  let activeTab='home';
+  let activeEmojiSub=S.emojiSubTab||'custom';
+  let favOnlyEmoji=false, favOnlyStickers=false, favOnlyGifs=false;
+  let stickersLoaded=false;
+  let emojiProg={loaded:0,total:EMOJI_COUNT,done:false,cached:false};
+  let _rendering=false; // Prevent re-entrant rendering
+
+  // Recent
+  let recentItems=(()=>{try{return JSON.parse(GM_Get(K.recent,'[]'));}catch{return[];}})();
+  function addRecent(item) {
+    if(!S.recentEnabled||!item)return;
+    const key=item.url||item.text||item.name;
+    if(!key)return;
+    recentItems=recentItems.filter(r=>(r.url||r.text||r.name)!==key);
+    recentItems.unshift({url:item.url||'',name:item.name||'',text:item.text||'',type:item.type||'emoji',isText:!!item.isText,ts:Date.now()});
+    if(recentItems.length>(S.recentMax||50))recentItems.length=S.recentMax||50;
+    try{GM_Set(K.recent,JSON.stringify(recentItems));}catch{}
+  }
+
+  // ═══════════════════════════════════════════════
+  //  FAVORITES (FIXED)
+  // ═══════════════════════════════════════════════
+  const _favV2={
+    emoji: new Set(JSON.parse(GM_Get(K.favEmoji,'[]'))),
+    sticker: new Set(JSON.parse(GM_Get(K.favSticker,'[]'))),
+    gif: new Set(JSON.parse(GM_Get(K.favGif,'[]')))
+  };
+  const _favLeg={
+    emoji: new Set(JSON.parse(GM_Get(K.favEmojiLeg,'[]'))),
+    sticker: new Set(JSON.parse(GM_Get(K.favStickerLeg,'[]'))),
+    gif: new Set(JSON.parse(GM_Get(K.favGifLeg,'[]')))
+  };
+  let favMeta=(()=>{try{return JSON.parse(GM_Get(K.favMeta,'{}'))||{};}catch{return{};}})();
+
+  // Direct key mapping - no string construction
+  const FAV_SAVE_KEYS = {
+    emoji: K.favEmoji,
+    sticker: K.favSticker,
+    gif: K.favGif
+  };
+  const FAV_LEG_KEYS = {
+    emoji: K.favEmojiLeg,
+    sticker: K.favStickerLeg,
+    gif: K.favGifLeg
+  };
+
+  function saveFavSet(type) {
+    try {
+      GM_Set(FAV_SAVE_KEYS[type], JSON.stringify([..._favV2[type]]));
+      GM_Set(FAV_LEG_KEYS[type], JSON.stringify([..._favLeg[type]]));
+    } catch(e) {
+      console.error('[UE] Failed to save favorites:', e);
+    }
+  }
+  function saveFavMeta() {
+    try { GM_Set(K.favMeta, JSON.stringify(favMeta||{})); } catch {}
+  }
 
   function isFav(type, item) {
-    if (!item) return false;
-    if (type === 'emoji') return favEmojiV2.has(item.url) || favEmojiLegacy.has(item.name);
-    if (type === 'sticker') return favStickerV2.has(item.url) || favStickerLegacy.has(item.name);
-    if (type === 'gif') return favGifV2.has(item.url) || favGifLegacy.has(item.name);
-    return false;
-  }
-  function favAdd(type, item) {
-    if (!item || !item.url) return;
-    const now = Date.now();
-    if (type === 'emoji') { favEmojiV2.add(item.url); saveFavV2(FAV_KEYS.emojiV2, favEmojiV2); }
-    if (type === 'sticker') { favStickerV2.add(item.url); saveFavV2(FAV_KEYS.stickerV2, favStickerV2); }
-    if (type === 'gif') { favGifV2.add(item.url); saveFavV2(FAV_KEYS.gifV2, favGifV2); }
-    favMeta[item.url] = { name: item.name || item.url.split('/').pop(), type, ts: now };
-    saveFavMeta();
-  }
-  function favRemove(type, item) {
-    if (!item) return;
-    if (type === 'emoji') { favEmojiV2.delete(item.url); favEmojiLegacy.delete(item.name); saveFavV2(FAV_KEYS.emojiV2, favEmojiV2); saveFavLegacy(FAV_KEYS.emojiLegacy, favEmojiLegacy); }
-    else if (type === 'sticker') { favStickerV2.delete(item.url); favStickerLegacy.delete(item.name); saveFavV2(FAV_KEYS.stickerV2, favStickerV2); saveFavLegacy(FAV_KEYS.stickerLegacy, favStickerLegacy); }
-    else if (type === 'gif') { favGifV2.delete(item.url); favGifLegacy.delete(item.name); saveFavV2(FAV_KEYS.gifV2, favGifV2); saveFavLegacy(FAV_KEYS.gifLegacy, favGifLegacy); }
-    if (favMeta[item.url]) { delete favMeta[item.url]; saveFavMeta(); }
-  }
-  function favToggle(type, item) { isFav(type, item) ? favRemove(type, item) : favAdd(type, item); }
-  function sortFavFirstStable(arr, favSetV2, legacyNames) {
-    return arr.slice().sort((a, b) => {
-      const af = favSetV2.has(a.url) || legacyNames?.has(a.name);
-      const bf = favSetV2.has(b.url) || legacyNames?.has(b.name);
-      if (af && !bf) return -1;
-      if (!af && bf) return 1;
-      return a.originalIndex - b.originalIndex;
-    });
+    if(!item||!type)return false;
+    const key = item.url || item.text || item.name;
+    if(!key) return false;
+    return (_favV2[type] && _favV2[type].has(key)) || (_favLeg[type] && _favLeg[type].has(item.name));
   }
 
-  const old = document.getElementById('uni-emoji-menu');
-  if (old) old.remove();
-  const container = document.createElement('div');
-  container.id = 'uni-emoji-menu';
-  document.body.appendChild(container);
+  function favToggle(type, item) {
+    if(!item||!type)return;
+    const key = item.url || item.text || item.name;
+    if(!key)return;
 
-  function showSoftNotice(msg) {
     try {
-      let n = document.getElementById('uni-soft-notice');
-      if (!n) {
-        n = document.createElement('div');
-        n.id = 'uni-soft-notice';
-        Object.assign(n.style, { position: 'absolute', top: '6px', left: '12px', background: 'rgba(0,0,0,.55)', color: '#fff', padding: '6px 10px', borderRadius: '6px', fontSize: '12px', zIndex: 1, pointerEvents: 'none' });
-        container.appendChild(n);
+      if(isFav(type, item)) {
+        // Remove
+        _favV2[type].delete(key);
+        _favLeg[type].delete(item.name);
+        if(favMeta[key]) { delete favMeta[key]; }
+      } else {
+        // Add
+        _favV2[type].add(key);
+        favMeta[key] = { name: item.name||'', type, ts: Date.now(), isText: !!item.isText, text: item.text||'' };
       }
-      n.textContent = msg;
-      n.style.display = 'block';
-      clearTimeout(n.__t);
-      n.__t = setTimeout(() => (n.style.display = 'none'), 4500);
-    } catch {}
-  }
-
-  function hexToRgba(hex, alpha) {
-    const m = String(hex).trim().replace('#', '');
-    const s = m.length === 3 ? m.split('').map(ch => ch+ch).join('') : m;
-    const bigint = parseInt(s || '000000', 16);
-    const r = (bigint >> 16) & 255, g = (bigint >> 8) & 255, b = bigint & 255;
-    const a = Math.max(0, Math.min(1, Number(alpha) || 1));
-    return `rgba(${r}, ${g}, ${b}, ${a})`;
-  }
-
-  const cssBase = `
-#uni-emoji-menu{
-  --menu-min-width:${settings.menuMinWidth}px;
-  --menu-max-width:${settings.menuMaxWidth}px;
-  --menu-min-height:${settings.menuMinHeight}px;
-  --menu-max-heightVh:${settings.menuMaxHeightVh}vh;
-  --menu-radius:${settings.menuRadius}px;
-  --tile-radius:${settings.tileRadius}px;
-  --bg-rgba:${hexToRgba(settings.bg, settings.bgAlpha)};
-  --text:${settings.text};
-  --accent:${settings.accent};
-  --border-color:${settings.borderColor};
-  --border-width:${settings.borderWidth}px;
-  --shadow:${settings.shadow};
-  --emoji-tile:${settings.emojiSize}px;
-  --sticker-tile-height:${settings.stickerSize}px;
-  --gif-tile-height:${settings.gifSize}px;
-  --media-tile-height:${settings.gifSize}px;
-  --gif-min-col:${settings.gifMinCol}px;
-  --gap-emoji:${settings.gapEmoji}px;
-  --gap-large:${settings.gapLarge}px;
-  --font-family:${settings.fontFamily};
-  --ui-font-size:${settings.uiFontSize}px;
-  --tile-bg:${settings.tileBg};
-  --hover-scale:${settings.hoverScale};
-  --glow-strength:${settings.glowStrength}px;
-  --star-color:${settings.starColor};
-  --star-bg:${settings.starBg};
-  --star-border:${settings.starBorder};
-  --star-top:${settings.starTop}px;
-  --star-right:${settings.starRight}px;
-  --star-size:${settings.starSize}px;
-  --star-sm-size:${settings.starSmSize}px;
-  --btn-radius:${settings.btnRadius}px;
-  --search-radius:${settings.searchRadius}px;
-  --search-border:${settings.searchBorder};
-  --pagination-bg:${settings.paginationBg};
-  --pagination-active-bg:${settings.paginationActiveBg};
-  --pagination-color:${settings.paginationColor};
-  --backdrop-blur:${settings.backdropBlur}px;
-  --z:${settings.zIndex}
-}
-#uni-emoji-menu{
-  position:fixed;
-  top: calc(50% - max(var(--menu-min-height), 70vh) / 2);
-  left: calc(50% - max(var(--menu-min-width), 50vw) / 2);
-  width: 50vw;
-  height: 70vh;
-  min-width: var(--menu-min-width);
-  max-width: var(--menu-max-width);
-  min-height: var(--menu-min-height);
-  max-height: var(--menu-max-heightVh);
-  background-color:var(--bg-rgba);color:var(--text);
-  border-radius:var(--menu-radius);
-  border:var(--border-width) solid var(--border-color);
-  box-shadow:0 8px 24px rgba(0,0,0,var(--shadow));
-  padding:12px;display:none;
-  font-family:var(--font-family);font-size:var(--ui-font-size);
-  user-select:none;flex-direction:column;z-index:var(--z);
-  backdrop-filter:blur(var(--backdrop-blur));
-  overflow:hidden
-}
-#uni-emoji-menu .uni-header{display:flex;align-items:center;justify-content:center;position:relative;margin-bottom:6px}
-#uni-emoji-menu .uni-title{font-weight:700;font-size:16px;letter-spacing:.3px}
-#uni-emoji-menu .uni-version{margin-left:6px;color:#aeb0b4;font-weight:600}
-#uni-emoji-menu .uni-status{margin-left:8px;width:8px;height:8px;display:inline-block;border-radius:50%;background:#43b581;box-shadow:0 0 6px #43b581}
-#uni-emoji-menu .dragbtn{color:#fefefe;left:8px;position:absolute;font-size:16px;cursor:move}
-#uni-emoji-menu .exitbtn{color:#ff7373;cursor:pointer;right:8px;position:absolute;font-size:18px}
-#uni-emoji-menu .topsearchbarbuttons{display:flex;gap:10px;margin:6px 0 8px 2px}
-#uni-emoji-menu .hometab,#uni-emoji-menu .emojistab,#uni-emoji-menu .stickerstab,#uni-emoji-menu .giftab,#uni-emoji-menu .settingstab{
-  font-weight:600;font-size:14px;color:#fff;background:none;border:none;border-radius:8px;padding:4px 12px;cursor:pointer;opacity:.85;transition:background .18s,color .18s,opacity .18s
-}
-#uni-emoji-menu .hometab:hover,#uni-emoji-menu .emojistab:hover,#uni-emoji-menu .stickerstab:hover,#uni-emoji-menu .giftab:hover,#uni-emoji-menu .settingstab:hover{background-color:#46484c;opacity:1}
-#uni-emoji-menu .hometab.active,#uni-emoji-menu .emojistab.active,#uni-emoji-menu .stickerstab.active,#uni-emoji-menu .giftab.active,#uni-emoji-menu .settingstab.active{background:#46484c;opacity:1}
-#uni-emoji-menu .settingstab{margin-left:auto}
-#uni-emoji-menu #uni-emoji-toolbar,#uni-emoji-menu #uni-gif-toolbar,#uni-emoji-menu #uni-sticker-toolbar{display:flex;align-items:center;gap:10px;margin:6px 8px;flex-wrap:wrap}
-#uni-emoji-menu #uni-emoji-search{
-  z-index:998;position:sticky;top:0;background:linear-gradient(135deg,rgba(0,0,0,0),rgba(255,255,255,0.04));
-  color:var(--text);height:36px;border:2px solid var(--search-border);border-radius:var(--search-radius);
-  width:100%;padding:8px 14px;box-sizing:border-box;font-size:14px;box-shadow:0 2px 5px rgba(0,0,0,0.25);
-  transition:all .2s ease;margin:5px 0 12px 0
-}
-#uni-emoji-menu #uni-emoji-search::placeholder{color:#8f93a2}
-#uni-emoji-menu #uni-emoji-search:focus{background-color:rgba(255,255,255,0.05);box-shadow:0 0 6px var(--accent);color:#fff}
-#uni-emoji-menu .srchxbtn{display:flex}
-#uni-emoji-menu .uni-emoji-grid{display:grid;grid-template-columns:repeat(auto-fill,var(--emoji-tile));gap:var(--gap-emoji);justify-content:start;overflow-y:auto;flex-grow:1;padding:6px 8px 10px 8px}
-#uni-emoji-menu .uni-emoji-tile{position:relative;width:var(--emoji-tile);height:var(--emoji-tile);display:flex;align-items:center;justify-content:center;background:var(--tile-bg);border-radius:6px}
-#uni-emoji-menu .uni-emoji-tile img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;cursor:pointer;filter:drop-shadow(0 0 1px #000)}
-#uni-emoji-menu .uni-emoji-tile:hover{transform:scale(var(--hover-scale));box-shadow:0 0 var(--glow-strength) var(--accent)}
-#uni-emoji-menu .uni-sticker-grid{
-  display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:var(--gap-large);
-  justify-content:start;overflow-y:auto;flex-grow:1;padding:10px 8px 14px 8px;position:relative
-}
-#uni-emoji-menu .uni-gif-grid{
-  display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--gif-min-col),1fr));gap:var(--gap-large);
-  justify-content:start;overflow-y:auto;flex-grow:1;padding:10px 8px 14px 8px;position:relative
-}
-#uni-emoji-menu .uni-tile{
-  position:relative;width:100%;height:var(--media-tile-height);background:var(--tile-bg);
-  border-radius:var(--tile-radius);display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,0.35)
-}
-#uni-emoji-menu .uni-tile img{max-width:100%;max-height:100%;object-fit:contain;border-radius:var(--tile-radius);cursor:pointer}
-#uni-emoji-menu .uni-tile:hover{transform:scale(var(--hover-scale));box-shadow:0 0 var(--glow-strength) var(--accent)}
-#uni-emoji-menu .uni-star,#uni-emoji-menu .uni-star-sm{
-  position:absolute;top:var(--star-top);right:var(--star-right);display:grid;place-items:center;background:var(--star-bg);
-  border:1px solid var(--star-border);color:var(--star-color);border-radius:999px;cursor:pointer;line-height:1;user-select:none;
-  opacity:0;transform:scale(.9);pointer-events:none;transition:opacity .14s ease,transform .14s ease
-}
-#uni-emoji-menu .uni-star{width:var(--star-size);height:var(--star-size);font-size:calc(var(--star-size)57)}
-#uni-emoji-menu .uni-star-sm{width:var(--star-sm-size);height:var(--star-sm-size);font-size:calc(var(--star-sm-size)59)}
-#uni-emoji-menu .uni-emoji-tile:hover .uni-star-sm,#uni-emoji-menu .uni-tile:hover .uni-star{opacity:1;transform:scale(1);pointer-events:auto}
-#uni-emoji-menu .gif-title{position:absolute;left:8px;right:8px;bottom:8px;font-size:12px;color:#fff;background:rgba(0,0,0,.35);padding:4px 6px;border-radius:6px;max-height:44px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;pointer-events:none}
-#uni-emoji-menu .uni-pill{background:#202225;border:1px solid var(--border-color);color:#e3e5e8;border-radius:var(--btn-radius);padding:6px 12px;cursor:pointer;font-weight:600;font-size:13px;line-height:1.2}
-#uni-emoji-menu .uni-pill.active{background:var(--accent);border-color:var(--accent);color:#fff}
-#uni-emoji-menu .uni-pill:hover{background:#36393f}
-#uni-emoji-menu .provider-btn{background:#202225;border:1px solid var(--border-color);color:#e3e5e8;border-radius:var(--btn-radius);padding:6px 10px;cursor:pointer;font-weight:600;font-size:13px;line-height:1.2}
-#uni-emoji-menu .provider-btn:hover{background:#36393f}
-#uni-emoji-menu .provider-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-#uni-emoji-menu .uni-pagination{display:flex;justify-content:center;gap:6px;margin-top:8px;flex-wrap:wrap;user-select:none}
-#uni-emoji-menu .uni-pagination button{background:var(--pagination-bg);border:none;border-radius:3px;color:var(--pagination-color);padding:6px 12px;font-size:14px;cursor:pointer;transition:background .2s,color .2s,box-shadow .2s;min-width:34px;font-weight:600}
-#uni-emoji-menu .uni-pagination button:hover:not(.active){background:#36393f;color:#fff;box-shadow:0 0 5px var(--accent)}
-#uni-emoji-menu .uni-pagination button.active{background:var(--pagination-active-bg);color:#fff;box-shadow:0 0 10px var(--accent)}
-#uni-emoji-menu #uni-page-jump-container{display:flex;justify-content:center;gap:8px;margin-top:12px;user-select:none}
-#uni-emoji-menu #uni-page-jump-container input[type="number"]{width:100px;padding:6px 8px;font-size:15px;border:none;border-radius:20px;background:#202225;color:#dcddde;box-shadow:inset 0 0 4px #000;text-align:center}
-#uni-emoji-menu #uni-page-jump-container button{background:var(--accent);border:none;border-radius:5px;padding:6px 14px;color:#fff;font-weight:600;font-size:15px;cursor:pointer;box-shadow:0 0 8px var(--accent)}
-#uni-emoji-menu #uni-page-jump-container button:hover{filter:brightness(.95)}
-#uni-emoji-menu #uni-settings-panel{display:none;overflow-y:auto;flex-grow:1;padding:12px 10px}
-#uni-emoji-menu .uni-section{background:rgba(0,0,0,.15);border:1px solid var(--border-color);border-radius:10px;padding:14px;margin:10px 0}
-#uni-emoji-menu .uni-section h3{margin:0 0 10px 0;font-size:15px;color:#fff;line-height:1.3}
-#uni-emoji-menu .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-#uni-emoji-menu .form{display: contents;}
-#uni-emoji-menu .form label{min-width:auto}
-#uni-emoji-menu .form .field-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
-#uni-emoji-menu .api-form{display:grid;grid-template-columns:180px minmax(240px,1fr);gap:8px 12px;align-items:center}
-#uni-emoji-menu .api-form label{min-width:auto}
-#uni-emoji-menu .api-form .api-actions{grid-column:1 / -1;display:grid;grid-template-columns:auto auto auto 1fr;gap:8px;align-items:center}
-#uni-emoji-menu input[type="number"].mini{width:100px}
-#uni-emoji-menu input.api-key{width:100%}
-#uni-emoji-menu input[type="text"].font-input{width:420px;max-width:100%}
-#uni-emoji-menu input[type="color"]{width:36px;height:28px;padding:0;border:none;border-radius:6px}
-#uni-emoji-menu select.font-input{height:30px;padding:4px 8px;border-radius:6px;border:1px solid var(--border-color);background:#202225;color:#e3e5e8}
-#uni-emoji-menu .range{display:flex;align-items:center;gap:10px}
-#uni-emoji-menu .range input[type="range"]{width:220px}
-#uni-emoji-menu .help{opacity:.75;font-size:12px}
-#uni-emoji-menu .btn{background:var(--accent);border:none;border-radius:8px;padding:6px 12px;color:#fff;font-weight:600;font-size:13px;cursor:pointer;line-height:1.2}
-#uni-emoji-menu .btn.secondary{background:#202225;border:1px solid var(--border-color);color:#e3e5e8}
-#uni-emoji-menu .btn.warn{background:#b93131}
-#uni-emoji-menu .btn:hover{filter:brightness(.95)}
-#uni-emoji-menu textarea.blockarea,#uni-emoji-menu textarea#styleJson,#uni-emoji-menu textarea#customCssArea{width:100%;min-height:120px;background:#1f2124;color:#e8e8e8;border:1px solid var(--border-color);border-radius:8px;padding:8px}
-#uni-emoji-menu .status-badge{font-size:12px;margin-left:8px;opacity:.95}
-#uni-emoji-menu .badge-ok{color:#43b581}
-#uni-emoji-menu .badge-err{color:#ff6464}
-#uni-emoji-menu #uni-changelog{max-height:180px;overflow:auto;margin-top:8px;background:#1f2023;border:1px solid #2a2c30;border-radius:6px;padding:8px}
-#uni-emoji-menu .uni-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;opacity:.85;padding:16px}
-#uni-emoji-menu #uni-home-panel{display:none;overflow-y:auto;flex-grow:1;padding:12px 10px}
-#uni-emoji-menu .home-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
-#uni-emoji-menu .home-card{background:rgba(0,0,0,.15);border:1px solid var(--border-color);border-radius:8px;padding:12px;margin:10px;}
-#uni-emoji-menu .home-card h4{margin:0 0 8px 0;font-size:14px}
-#uni-emoji-menu .chip{display:inline-block;background:#202225;border:1px solid var(--border-color);border-radius:999px;padding:4px 10px;font-size:12px;margin-right:6px}
-@media (max-width:1200px){
-  #uni-emoji-menu .api-form{grid-template-columns:160px minmax(200px,1fr)}
-  #uni-emoji-menu .api-form .api-actions{grid-template-columns:auto auto auto 1fr}
-}
-@media (max-width:900px){
-  #uni-emoji-menu .form{grid-template-columns:1fr}
-  #uni-emoji-menu .form .field-row{grid-template-columns:1fr}
-  #uni-emoji-menu .form .field-row .btn{width:100%}
-  #uni-emoji-menu .api-form{grid-template-columns:1fr}
-  #uni-emoji-menu .api-form .api-actions{grid-template-columns:1fr 1fr 1fr}
-  #uni-emoji-menu .api-form .api-actions .btn{width:100%}
-  #uni-emoji-menu .api-form .api-actions .status-badge{grid-column:1 / -1;justify-self:start;margin-top:4px}
-  #uni-emoji-menu .range input[type="range"]{width:100%}
-}
-@media (max-width:520px){
-  #uni-emoji-menu .api-form .api-actions{grid-template-columns:1fr}
-}
-#uni-ctx-menu{position:fixed;z-index:2147483647;background:#2b2d31;color:#e3e5e8;border:1px solid #2a2c30;border-radius:8px;min-width:200px;box-shadow:0 8px 30px rgba(0,0,0,.5);padding:6px;display:none}
-#uni-ctx-menu button{width:100%;text-align:left;background:transparent;border:none;color:#e3e5e8;padding:8px 10px;border-radius:6px;cursor:pointer;font-weight:600;font-size:13px}
-#uni-ctx-menu button:hover{background:#3a3c43}
-#global-emoji-button.emoji-button{position:fixed;right:15px;bottom:35px;z-index:2147483647;cursor:pointer;font-size:38px;display:inline-flex;align-items:center;justify-content:center;transition:transform .2s,filter .2s;user-select:none;filter:grayscale(100%)}
-#global-emoji-button.emoji-button:hover{transform:scale(1.1);filter:grayscale(0%)}
-  `;
-  GM_addStyle(cssBase);
-  let CURRENT_CSS_BASE = cssBase;
-
-  container.innerHTML = `
-    <div class="uni-header">
-      <div class="dragbtn" title="Drag"><i class="fa-solid fa-up-down-left-right"></i></div>
-      <div class="uni-title">Ultimate Emojis [Beta]<span class="uni-version">v${VERSION}</span><span class="uni-status"></span></div>
-      <div class="exitbtn" title="Close">✕</div>
-    </div>
-
-    <div class="topsearchbarbuttons">
-      <div class="hometab">Home</div>
-      <div class="giftab">GIFs</div>
-      <div class="stickerstab">Stickers</div>
-      <div class="emojistab active">Emojis</div>
-      <div class="settingstab" title="Settings"><i class="fa-solid fa-toolbox"></i></div>
-    </div>
-
-    <div id="uni-home-panel">
-      <div class="uni-section">
-        <h3>Ultimate Emojis - Stats</h3>
-        <div class="home-grid">
-          <div class="home-card">
-            <h4>Menu</h4>
-            <div>Name: <b>Ultimate Emojis - Beta</b></div>
-            <div>Description: This is a beta version but everything works fine, <b>DON'T PANIC</b></div>
-            <div>Version: <span id="home-version">v${VERSION}</span></div>
-            <div style="margin:10px;display:flex;gap:8px;">
-              <button class="btn" id="home-check-update">Check for Updates</button>
-              <button class="btn secondary" id="home-open-download">Download Page</button>
-              <span class="status-badge" id="home-update-status"></span>
-            </div>
-          </div>
-          <div class="home-card">
-            <h4>Content status</h4>
-            <div class="chip">Emojis: <span id="home-emoji-count">loading…</span></div>
-            <div class="chip">Stickers: <span id="home-sticker-count">loading…</span></div>
-            <div class="chip">Local GIFs: <span id="home-localgifs-status">–</span></div>
-          </div>
-          <div class="home-card">
-            <h4>Providers</h4>
-            <div>Tenor: <span id="home-prov-tenor">–</span></div>
-            <div>GIPHY: <span id="home-prov-giphy">–</span></div>
-            <div>Imgur: <span id="home-prov-imgur">–</span></div>
-            <div>Tumblr: <span id="home-prov-tumblr">–</span></div>
-          </div>
-        </div>
-          <div><h3>📝Note:</h3>
-            <b style="color: #df9328">I’m leaving this project open so anyone can contribute, improve, and create their own version.
-            I don’t have time to keep developing it myself, and I’d rather not rely on AI to make the fixes.
-            Now it’s your turn, jump in, support the project, and make it amazing!</b>
-          </div>
-      </div>
-    </div>
-
-    <div id="uni-emoji-toolbar" class="uni-toolbar" style="display:none">
-      <button class="uni-pill" id="emojiFavOnly">Favorites only</button>
-    </div>
-
-    <div class="srchxbtn" style="display:none">
-      <input type="text" id="uni-emoji-search" placeholder="Search...">
-    </div>
-
-    <div class="uni-emoji-grid" id="uni-emoji-grid" style="display:none"></div>
-
-    <div id="uni-gif-toolbar" class="uni-toolbar" style="display:none">
-      <span style="opacity:.7;font-size:12px;">Provider:</span>
-      <button class="provider-btn" data-provider="local">Local</button>
-      <button class="provider-btn" data-provider="tenor">Tenor</button>
-      <button class="provider-btn" data-provider="giphy">GIPHY</button>
-      <button class="provider-btn" data-provider="imgur">Imgur</button>
-      <button class="provider-btn" data-provider="reddit">Reddit</button>
-      <button class="provider-btn" data-provider="tumblr">Tumblr</button>
-      <span style="flex:1"></span>
-      <button class="uni-pill" id="gifFavOnly">Favorites only</button>
-    </div>
-
-    <div id="uni-sticker-toolbar" class="uni-toolbar" style="display:none">
-      <button class="uni-pill" id="stickerFavOnly">Favorites only</button>
-    </div>
-
-    <div class="uni-sticker-grid" id="uni-sticker-grid" style="display:none"></div>
-    <div class="uni-gif-grid" id="uni-gif-grid" style="display:none"></div>
-
-    <div class="uni-pagination" id="uni-emoji-pagination" style="display:none"></div>
-    <div id="uni-page-jump-container" style="display:none">
-      <input type="number" id="uni-page-jump-input" min="1" placeholder="Page" />
-      <button id="uni-page-jump-button">Go</button>
-    </div>
-
-    <div id="uni-settings-panel" style="display:none">
-      <div class="uni-section">
-        <h3>Local GIF packs</h3>
-        <div class="row">
-          <label>Pack URLs</label>
-          <div style="flex:1"></div>
-        </div>
-        <textarea id="localGifUrlsArea" class="blockarea" placeholder="One URL per line (JSON packs)"></textarea>
-        <div class="row" style="gap:8px;margin-top:8px;">
-          <button class="btn" id="saveLocalGifs">Save</button>
-          <button class="btn secondary" id="reloadLocalGifs">Reload</button>
-          <span class="status-badge" id="st-localgifs"></span>
-        </div>
-      </div>
-
-      <div class="uni-section">
-        <h3>GIFs page</h3>
-        <div class="row range">
-          <label>Tile height</label>
-          <input type="range" id="gifSize" min="100" max="360" step="4"><span id="gifSizeVal"></span>
-        </div>
-        <div class="row range">
-          <label>Items per page</label>
-          <input type="range" id="gifPerPage" min="12" max="60" step="12"><span id="gifPerPageVal"></span>
-        </div>
-        <div class="row range">
-          <label>Min column width</label>
-          <input type="range" id="gifMinCol" min="100" max="240" step="4"><span id="gifMinColVal"></span>
-        </div>
-        <div class="row" style="gap:14px;">
-          <label class="radio"><input type="checkbox" id="showGifStar"> Show Favorite star</label>
-          <label class="radio"><input type="checkbox" id="gifShowTitles"> Show titles overlay</label>
-        </div>
-        <div class="row" style="gap:10px;">
-          <label>Default provider</label>
-          <select id="defaultGifProvider" class="font-input" style="max-width:260px;">
-            <option value="local">Local</option>
-            <option value="tenor">Tenor</option>
-            <option value="giphy">GIPHY</option>
-            <option value="imgur">Imgur</option>
-            <option value="reddit">Reddit</option>
-            <option value="tumblr">Tumblr</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="uni-section">
-        <h3>GIF insert size</h3>
-        <div class="row">
-          <label class="radio"><input type="radio" name="gifInsertSize" value="120">120px</label>
-          <label class="radio"><input type="radio" name="gifInsertSize" value="140">140px</label>
-          <label class="radio"><input type="radio" name="gifInsertSize" value="180">180px</label>
-          <label class="radio">Custom <input type="number" class="mini" id="gifInsertSizeCustom" min="50" max="1024" step="1" placeholder="px"></label>
-        </div>
-        <div class="help">Controls the [img=...] size when inserting GIFs.</div>
-      </div>
-
-      <div class="uni-section">
-        <h3>GIF Providers</h3>
-        <div class="row" style="gap:14px;">
-          <label class="radio"><input type="checkbox" id="sw-tenor"> Tenor</label>
-          <label class="radio"><input type="checkbox" id="sw-giphy"> GIPHY</label>
-          <label class="radio"><input type="checkbox" id="sw-imgur"> Imgur</label>
-          <label class="radio"><input type="checkbox" id="sw-tumblr"> Tumblr</label>
-        </div>
-        <div class="help">These toggles enable/disable buttons in the GIF tab. Local and Reddit are always available.</div>
-      </div>
-
-      <div class="uni-section">
-        <h3>Import APIs</h3>
-        <div class="row">
-          <label>Scope</label>
-          <label class="radio"><input type="radio" name="apiScope" value="global">Global</label>
-          <label class="radio"><input type="radio" name="apiScope" value="site">Per-site (${location.host})</label>
-          <span style="margin-left:auto;opacity:.8;font-size:12px;">Stored locally on this device only</span>
-        </div>
-
-        <div class="api-form" style="margin-top:6px;">
-          <label>Tenor API key</label>
-          <input type="password" class="api-key" id="tenorKey" placeholder="Enter Tenor API key">
-          <div class="api-actions">
-            <button class="btn secondary" id="showTenor">Show</button>
-            <button class="btn secondary" id="saveTenor">Save</button>
-            <button class="btn" id="testTenor">Test</button>
-            <span class="status-badge" id="st-tenor"></span>
-          </div>
-        </div>
-
-        <div class="api-form" style="margin-top:6px;">
-          <label>GIPHY API key</label>
-          <input type="password" class="api-key" id="giphyKey" placeholder="Enter GIPHY API key">
-          <div class="api-actions">
-            <button class="btn secondary" id="showGiphy">Show</button>
-            <button class="btn secondary" id="saveGiphy">Save</button>
-            <button class="btn" id="testGiphy">Test</button>
-            <span class="status-badge" id="st-giphy"></span>
-          </div>
-        </div>
-
-        <div class="api-form" style="margin-top:6px;">
-          <label>Imgur Client-ID</label>
-          <input type="password" class="api-key" id="imgurKey" placeholder="Enter Imgur Client-ID">
-          <div class="api-actions">
-            <button class="btn secondary" id="showImgur">Show</button>
-            <button class="btn secondary" id="saveImgur">Save</button>
-            <button class="btn" id="testImgur">Test</button>
-            <span class="status-badge" id="st-imgur"></span>
-          </div>
-        </div>
-
-        <div class="api-form" style="margin-top:6px;">
-          <label>Tumblr API key</label>
-          <input type="password" class="api-key" id="tumblrKey" placeholder="Enter Tumblr API key">
-          <div class="api-actions">
-            <button class="btn secondary" id="showTumblr">Show</button>
-            <button class="btn secondary" id="saveTumblr">Save</button>
-            <button class="btn" id="testTumblr">Test</button>
-            <span class="status-badge" id="st-tumblr"></span>
-          </div>
-        </div>
-      </div>
-
-      <div class="uni-section">
-        <h3>Reddit provider</h3>
-        <div class="form reddit-form">
-          <label>Subreddits</label>
-          <div class="field-row">
-            <input type="text" id="redditSubs" class="font-input" placeholder="gifs, HighQualityGifs, reactiongifs">
-            <button class="btn secondary" id="saveRedditSubs">Save</button>
-          </div>
-        </div>
-        <div class="row" style="margin-top:6px;">
-          <label class="radio"><input type="checkbox" id="redditIncludeImages"> Include images (jpg/png/webp)</label>
-        </div>
-      </div>
-
-      <div class="uni-section">
-        <h3>Emoji size</h3>
-        <div class="row">
-          <label class="radio"><input type="radio" name="emojiSize" value="38">38px</label>
-          <label class="radio"><input type="radio" name="emojiSize" value="48">48px</label>
-          <label class="radio"><input type="radio" name="emojiSize" value="58">58px</label>
-          <label class="radio">Custom <input type="number" class="mini" id="emojiSizeCustom" min="12" max="256" step="1" placeholder="px"></label>
-        </div>
-      </div>
-
-      <div class="uni-section">
-        <h3>Sticker size</h3>
-        <div class="row">
-          <label class="radio"><input type="radio" name="stickerSize" value="128">128px</label>
-          <label class="radio"><input type="radio" name="stickerSize" value="256">256px</label>
-          <label class="radio"><input type="radio" name="stickerSize" value="512">512px</label>
-          <label class="radio">Custom <input type="number" class="mini" id="stickerSizeCustom" min="64" max="1024" step="1" placeholder="px"></label>
-        </div>
-      </div>
-
-      <div class="uni-section">
-        <h3>Appearance (Basic)</h3>
-        <div class="row range"><label>Menu width</label><input type="range" id="menuWidth" min="480" max="1100" step="10"><span id="menuWidthVal"></span></div>
-        <div class="row range"><label>Menu height</label><input type="range" id="menuHeightPx" min="360" max="1000" step="10"><span id="menuHeightPxVal"></span></div>
-        <div class="row range"><label>Max height (vh)</label><input type="range" id="menuMaxHeightVh" min="40" max="95" step="1"><span id="menuMaxHeightVhVal"></span></div>
-        <div class="row range"><label>Menu radius</label><input type="range" id="menuRadius" min="0" max="24" step="1"><span id="menuRadiusVal"></span></div>
-        <div class="row range"><label>Tile radius</label><input type="range" id="tileRadius" min="0" max="20" step="1"><span id="tileRadiusVal"></span></div>
-        <div class="row range"><label>UI font size</label><input type="range" id="uiFontSize" min="12" max="18" step="1"><span id="uiFontSizeVal"></span></div>
-        <div class="row range"><label>Shadow</label><input type="range" id="shadow" min="0" max="1" step="0.05"><span id="shadowVal"></span></div>
-        <div class="row range"><label>Emoji gap</label><input type="range" id="gapEmoji" min="2" max="20" step="1"><span id="gapEmojiVal"></span></div>
-        <div class="row range"><label>Large gap</label><input type="range" id="gapLarge" min="4" max="30" step="1"><span id="gapLargeVal"></span></div>
-        <div class="row" style="margin-top:6px;">
-          <label>Background</label><input type="color" id="bgColor">
-          <label>Opacity</label><input type="range" id="bgAlpha" min="0.3" max="1" step="0.05"><span id="bgAlphaVal"></span>
-          <label style="margin-left:10px;">Text</label><input type="color" id="textColor">
-          <label style="margin-left:10px;">Accent</label><input type="color" id="accentColor">
-        </div>
-        <div class="row" style="margin-top:6px;">
-          <label>Border</label><input type="color" id="borderColor">
-          <label>Width</label><input type="range" id="borderWidth" min="0" max="6" step="1"><span id="borderWidthVal"></span>
-        </div>
-        <div class="row" style="margin-top:6px; gap:6px;">
-          <label>Font family</label><input type="text" id="fontFamily" class="font-input" placeholder='"gg sans", "Noto Sans", "Helvetica Neue", Arial, sans-serif'>
-        </div>
-      </div>
-
-      <div class="uni-section">
-        <h3>Appearance (Advanced)</h3>
-        <div class="row" style="gap:14px;">
-          <label>Tile BG</label><input type="color" id="tileBg">
-          <label>Hover scale</label><input type="range" id="hoverScale" min="1.00" max="1.20" step="0.01"><span id="hoverScaleVal"></span>
-          <label>Glow strength</label><input type="range" id="glowStrength" min="0" max="30" step="1"><span id="glowStrengthVal"></span>
-        </div>
-        <div class="row" style="gap:14px;">
-          <label>Star color</label><input type="color" id="starColor">
-          <label>Star BG</label><input type="text" id="starBg" class="font-input" placeholder="rgba(0,0,0,.35)">
-          <label>Star border</label><input type="color" id="starBorder">
-        </div>
-        <div class="row" style="gap:14px;">
-          <label>Star size</label><input type="range" id="starSize" min="16" max="40" step="1"><span id="starSizeVal"></span>
-          <label>Star (small)</label><input type="range" id="starSmSize" min="12" max="32" step="1"><span id="starSmSizeVal"></span>
-        </div>
-        <div class="row" style="gap:14px;">
-          <label>Star top</label><input type="range" id="starTop" min="0" max="24" step="1"><span id="starTopVal"></span>
-          <label>Star right</label><input type="range" id="starRight" min="0" max="24" step="1"><span id="starRightVal"></span>
-        </div>
-        <div class="row" style="gap:14px;">
-          <label>Button radius</label><input type="range" id="btnRadius" min="0" max="16" step="1"><span id="btnRadiusVal"></span>
-          <label>Search radius</label><input type="range" id="searchRadius" min="0" max="24" step="1"><span id="searchRadiusVal"></span>
-          <label>Search border</label><input type="color" id="searchBorder">
-        </div>
-        <div class="row" style="gap:14px;">
-          <label>Backdrop blur</label><input type="range" id="backdropBlur" min="0" max="14" step="1"><span id="backdropBlurVal"></span>
-          <label>Z-index</label><input type="number" class="mini" id="zIndex" min="1000" max="2147483647" step="1">
-        </div>
-        <div class="row" style="gap:14px;">
-          <label>Pagination bg</label><input type="color" id="paginationBg">
-          <label>Active bg</label><input type="color" id="paginationActiveBg">
-          <label>Text</label><input type="color" id="paginationColor">
-        </div>
-      </div>
-
-      <div class="uni-section">
-        <h3>Custom CSS</h3>
-        <div class="row" style="gap:8px; margin-bottom:8px;">
-          <button class="btn secondary" id="loadDefaultCss">Load default CSS</button>
-          <button class="btn" id="applyCustomCss">Save & Apply</button>
-          <button class="btn secondary" id="exportCustomCss">Export CSS</button>
-          <button class="btn secondary" id="clearCustomCss">Clear CSS</button>
-        </div>
-        <textarea id="customCssArea" placeholder=""></textarea>
-      </div>
-
-      <div class="uni-section">
-        <h3>Export / Import style</h3>
-        <div class="row" style="gap:6px; margin-bottom:6px;">
-          <button class="btn" id="exportStyle">Copy style JSON</button>
-          <button class="btn secondary" id="resetStyle">Reset to defaults</button>
-        </div>
-        <textarea id="styleJson" placeholder='Paste style JSON here, e.g. {"emojiSize":58,"tileBg":"#111"}'></textarea>
-        <div class="row" style="gap:6px; margin-top:6px;">
-          <button class="btn" id="importStyle">Import</button>
-        </div>
-        <div id="importSummary" class="help"></div>
-      </div>
-
-      <div class="uni-section">
-        <h3>Change logs</h3>
-        <button class="btn" id="toggleChangelog">View change logs</button>
-        <div id="uni-changelog" style="display:none;">
-          <div><b>${UI_VERSION}</b></div>
-          <ul style="padding-left:16px;margin:8px 0">
-            <li>Added Reelflix new domain</li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="uni-section">
-        <h3>Quick actions</h3>
-        <div class="row" style="gap:8px;">
-          <button class="btn warn" id="resetAll">Reset All (appearance)</button>
-          <button class="btn secondary" id="resetAllData">Reset EVERYTHING (incl. favorites, API keys)</button>
-        </div>
-      </div>
-    </div>
-  `;
-
-  const gridEmoji = document.getElementById('uni-emoji-grid');
-  const gridStickers = document.getElementById('uni-sticker-grid');
-  const gridGifs = document.getElementById('uni-gif-grid');
-  const pagination = document.getElementById('uni-emoji-pagination');
-  const searchInput = document.getElementById('uni-emoji-search');
-  const pageJumpInput = document.getElementById('uni-page-jump-input');
-  const pageJumpButton = document.getElementById('uni-page-jump-button');
-  const homeTab = container.querySelector('.hometab');
-  const emojiTab = container.querySelector('.emojistab');
-  const stickerTab = container.querySelector('.stickerstab');
-  const gifTab = container.querySelector('.giftab');
-  const settingsTab = container.querySelector('.settingstab');
-  const emojiToolbar = document.getElementById('uni-emoji-toolbar');
-  const stickerToolbar = document.getElementById('uni-sticker-toolbar');
-  const gifToolbar = document.getElementById('uni-gif-toolbar');
-  const emojiFavOnlyBtn = document.getElementById('emojiFavOnly');
-  const stickerFavOnlyBtn = document.getElementById('stickerFavOnly');
-  const gifFavOnlyBtn = document.getElementById('gifFavOnly');
-  const pageJumpDiv = document.querySelector('#uni-page-jump-container');
-  const searchBarDiv = container.querySelector('.srchxbtn');
-  const settingsPanel = document.getElementById('uni-settings-panel');
-  const toggleChangelogBtn = document.getElementById('toggleChangelog');
-  const homePanel = document.getElementById('uni-home-panel');
-
-  const homeVersion = document.getElementById('home-version');
-  const homeUpdateBtn = document.getElementById('home-check-update');
-  const homeDownloadBtn = document.getElementById('home-open-download');
-  const homeUpdateStatus = document.getElementById('home-update-status');
-  const homeEmojiCount = document.getElementById('home-emoji-count');
-  const homeStickerCount = document.getElementById('home-sticker-count');
-  const homeLocalGifsStatus = document.getElementById('home-localgifs-status');
-  const homeProvTenor = document.getElementById('home-prov-tenor');
-  const homeProvGiphy = document.getElementById('home-prov-giphy');
-  const homeProvImgur = document.getElementById('home-prov-imgur');
-  const homeProvTumblr = document.getElementById('home-prov-tumblr');
-
-  const emojiSizeCustom = document.getElementById('emojiSizeCustom');
-  const stickerSizeCustom = document.getElementById('stickerSizeCustom');
-  const gifSizeRange = document.getElementById('gifSize');
-  const gifSizeVal = document.getElementById('gifSizeVal');
-
-  const gifPerPageRange = document.getElementById('gifPerPage');
-  const gifPerPageVal = document.getElementById('gifPerPageVal');
-  const gifMinColRange = document.getElementById('gifMinCol');
-  const gifMinColVal = document.getElementById('gifMinColVal');
-  const showGifStarCb = document.getElementById('showGifStar');
-  const gifShowTitlesCb = document.getElementById('gifShowTitles');
-  const defaultGifProviderSel = document.getElementById('defaultGifProvider');
-  const gifInsertSizeCustom = document.getElementById('gifInsertSizeCustom');
-
-  const menuWidthRange = document.getElementById('menuWidth');
-  const menuHeightPxRange = document.getElementById('menuHeightPx');
-  const menuHeightPxVal = document.getElementById('menuHeightPxVal');
-  const menuMaxHeightVhRange = document.getElementById('menuMaxHeightVh');
-  const menuMaxHeightVhVal = document.getElementById('menuMaxHeightVhVal');
-  const menuRadiusRange = document.getElementById('menuRadius');
-  const tileRadiusRange = document.getElementById('tileRadius');
-  const uiFontSizeRange = document.getElementById('uiFontSize');
-  const uiFontSizeVal = document.getElementById('uiFontSizeVal');
-  const shadowRange = document.getElementById('shadow');
-  const gapEmojiRange = document.getElementById('gapEmoji');
-  const gapLargeRange = document.getElementById('gapLarge');
-  const menuWidthVal = document.getElementById('menuWidthVal');
-  const menuRadiusVal = document.getElementById('menuRadiusVal');
-  const tileRadiusVal = document.getElementById('tileRadiusVal');
-  const shadowVal = document.getElementById('shadowVal');
-  const gapEmojiVal = document.getElementById('gapEmojiVal');
-  const gapLargeVal = document.getElementById('gapLargeVal');
-
-  const bgColorPicker = document.getElementById('bgColor');
-  const bgAlphaRange = document.getElementById('bgAlpha');
-  const bgAlphaVal = document.getElementById('bgAlphaVal');
-  const textColorPicker = document.getElementById('textColor');
-  const accentColorPicker = document.getElementById('accentColor');
-  const borderColorPicker = document.getElementById('borderColor');
-  const borderWidthRange = document.getElementById('borderWidth');
-  const borderWidthVal = document.getElementById('borderWidthVal');
-  const fontFamilyInput = document.getElementById('fontFamily');
-
-  const tileBgInput = document.getElementById('tileBg');
-  const hoverScaleRange = document.getElementById('hoverScale');
-  const hoverScaleVal = document.getElementById('hoverScaleVal');
-  const glowStrengthRange = document.getElementById('glowStrength');
-  const glowStrengthVal = document.getElementById('glowStrengthVal');
-  const starColorPicker = document.getElementById('starColor');
-  const starBgInput = document.getElementById('starBg');
-  const starBorderPicker = document.getElementById('starBorder');
-  const starSizeRange = document.getElementById('starSize');
-  const starSmSizeRange = document.getElementById('starSmSize');
-  const starSizeVal = document.getElementById('starSizeVal');
-  const starSmSizeVal = document.getElementById('starSmSizeVal');
-  const starTopRange = document.getElementById('starTop');
-  const starRightRange = document.getElementById('starRight');
-  const starTopVal = document.getElementById('starTopVal');
-  const starRightVal = document.getElementById('starRightVal');
-  const btnRadiusRange = document.getElementById('btnRadius');
-  const btnRadiusVal = document.getElementById('btnRadiusVal');
-  const searchRadiusRange = document.getElementById('searchRadius');
-  const searchRadiusVal = document.getElementById('searchRadiusVal');
-  const searchBorderPicker = document.getElementById('searchBorder');
-  const backdropBlurRange = document.getElementById('backdropBlur');
-  const backdropBlurVal = document.getElementById('backdropBlurVal');
-  const zIndexInput = document.getElementById('zIndex');
-  const paginationBgPicker = document.getElementById('paginationBg');
-  const paginationActiveBgPicker = document.getElementById('paginationActiveBg');
-  const paginationColorPicker = document.getElementById('paginationColor');
-
-  const customCssArea = document.getElementById('customCssArea');
-  const applyCustomCssBtn = document.getElementById('applyCustomCss');
-  const exportCustomCssBtn = document.getElementById('exportCustomCss');
-  const clearCustomCssBtn = document.getElementById('clearCustomCss');
-  const loadDefaultCssBtn = document.getElementById('loadDefaultCss');
-
-  const exportStyleBtn = document.getElementById('exportStyle');
-  const importStyleBtn = document.getElementById('importStyle');
-  const resetStyleBtn = document.getElementById('resetStyle');
-  const resetAllBtn = document.getElementById('resetAll');
-  const resetAllDataBtn = document.getElementById('resetAllData');
-  const styleJsonArea = document.getElementById('styleJson');
-  const importSummary = document.getElementById('importSummary');
-
-  const tenorKeyInput = document.getElementById('tenorKey');
-  const giphyKeyInput = document.getElementById('giphyKey');
-  const imgurKeyInput = document.getElementById('imgurKey');
-  const tumblrKeyInput = document.getElementById('tumblrKey');
-  const saveTenorBtn = document.getElementById('saveTenor');
-  const saveGiphyBtn = document.getElementById('saveGiphy');
-  const saveImgurBtn = document.getElementById('saveImgur');
-  const saveTumblrBtn = document.getElementById('saveTumblr');
-  const testTenorBtn = document.getElementById('testTenor');
-  const testGiphyBtn = document.getElementById('testGiphy');
-  const testImgurBtn = document.getElementById('testImgur');
-  const testTumblrBtn = document.getElementById('testTumblr');
-  const showTenorBtn = document.getElementById('showTenor');
-  const showGiphyBtn = document.getElementById('showGiphy');
-  const showImgurBtn = document.getElementById('showImgur');
-  const showTumblrBtn = document.getElementById('showTumblr');
-
-  const redditSubsInput = document.getElementById('redditSubs');
-  const saveRedditSubsBtn = document.getElementById('saveRedditSubs');
-  const redditIncludeImagesCb = document.getElementById('redditIncludeImages');
-
-  const swTenor = document.getElementById('sw-tenor');
-  const swGiphy = document.getElementById('sw-giphy');
-  const swImgur = document.getElementById('sw-imgur');
-  const swTumblr = document.getElementById('sw-tumblr');
-
-  const localGifUrlsArea = document.getElementById('localGifUrlsArea');
-  const saveLocalGifsBtn = document.getElementById('saveLocalGifs');
-  const reloadLocalGifsBtn = document.getElementById('reloadLocalGifs');
-  const stLocalGifs = document.getElementById('st-localgifs');
-
-  function fetchJson(url, headers) {
-    return new Promise((resolve, reject) => {
-      GM_xmlhttpRequest({
-        method: "GET",
-        url,
-        headers: headers || {},
-        onload: (res) => {
-          try { resolve(JSON.parse(res.responseText)); }
-          catch (e) { reject(e); }
-        },
-        onerror: () => reject(new Error("Request failed"))
-      });
-    });
-  }
-  function fetchText(url) {
-    return new Promise((resolve, reject) => {
-      GM_xmlhttpRequest({
-        method: 'GET',
-        url,
-        onload: (res) => resolve(res.responseText),
-        onerror: () => reject(new Error('Request failed'))
-      });
-    });
-  }
-  const mergeJsonObjects = (list) => Object.assign({}, ...list);
-  function toArrayFromMerged(merged, type = 'emoji') {
-    let idx = 0;
-    return Object.entries(merged).map(([name, val]) => {
-      const url = val && typeof val === 'object' ? (val.url || '') : (val || '');
-      if (!url) return null;
-      const tags = val && typeof val === 'object' && Array.isArray(val.tags) ? val.tags : [];
-      const animated = val && typeof val === 'object' && typeof val.animated === 'boolean'
-        ? val.animated : /\.gif($|\?)/i.test(url) || /\.apng($|\?)/i.test(url);
-      const originalIndex = idx++;
-      return { name, url, tags, animated, type, originalIndex };
-    }).filter(Boolean);
-  }
-  function insertBBCode(bbcode) {
-    const ids = ['chatbox__messages-create','new-comment__textarea','reply-comment','bbcode-message','bbcode-content','bbcode-signature','bbcode-about'];
-    const input = document.querySelector(ids.map(id => `textarea#${id}`).join(', '));
-    if (!input) return;
-    const s = input.selectionStart, e = input.selectionEnd;
-    if (typeof s === 'number' && typeof e === 'number' && typeof input.setRangeText === 'function') {
-      input.setRangeText(bbcode, s, e, 'end');
-    } else {
-      const val = input.value || '';
-      input.value = val.slice(0, s || val.length) + bbcode + val.slice(e || val.length);
+      saveFavSet(type);
+      saveFavMeta();
+    } catch(e) {
+      console.error('[UE] favToggle error:', e);
     }
-    input.focus();
   }
-  async function copyText(text) {
-    try { if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); return true; } } catch {}
-    try { if (typeof GM_setClipboard === 'function') { GM_setClipboard(text, 'text'); return true; } } catch {}
+
+  function sortFavFirst(arr, type) {
+    const v2=_favV2[type], leg=_favLeg[type];
+    if(!v2) return arr;
+    return arr.slice().sort((a,b)=>{
+      const ak=a.url||a.text||a.name;
+      const bk=b.url||b.text||b.name;
+      const af=v2.has(ak)||(leg&&leg.has(a.name));
+      const bf=v2.has(bk)||(leg&&leg.has(b.name));
+      return af===bf ? a.originalIndex-b.originalIndex : af?-1:1;
+    });
+  }
+
+  function getFavList(tf) {
+    const arr=[];
     try {
-      const ta = document.createElement('textarea');
-      ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
-      document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
-      return true;
-    } catch {}
-    return false;
-  }
-  function ensurePage(len, perPage, page) {
-    const totalPages = Math.max(1, Math.ceil(len / perPage));
-    return { totalPages, page: Math.min(Math.max(page, 1), totalPages) };
-  }
-  function showEmpty(el, text) {
-    el.innerHTML = `<div class="uni-empty">${text}</div>`;
-  }
-
-  let ctxMenuEl = null;
-  function ensureCtxMenu() {
-    if (ctxMenuEl) return ctxMenuEl;
-    ctxMenuEl = document.createElement('div');
-    ctxMenuEl.id = 'uni-ctx-menu';
-    ctxMenuEl.addEventListener('contextmenu', (e) => e.preventDefault());
-    document.body.appendChild(ctxMenuEl);
-    document.addEventListener('click', hideCtxMenu, true);
-    window.addEventListener('scroll', hideCtxMenu, true);
-    window.addEventListener('resize', hideCtxMenu, true);
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideCtxMenu(); });
-    return ctxMenuEl;
-  }
-  function hideCtxMenu() { if (ctxMenuEl) ctxMenuEl.style.display = 'none'; }
-  function showCtxMenu(items, x, y) {
-    const el = ensureCtxMenu();
-    el.innerHTML = '';
-    (items || []).forEach(it => {
-      const btn = document.createElement('button');
-      btn.textContent = it.label;
-      btn.onclick = () => { hideCtxMenu(); it.onClick && it.onClick(); };
-      el.appendChild(btn);
-    });
-    el.style.display = 'block';
-    requestAnimationFrame(() => {
-      const rect = el.getBoundingClientRect();
-      const left = Math.min(x, window.innerWidth - rect.width - 8);
-      const top = Math.min(y, window.innerHeight - rect.height - 8);
-      el.style.left = `${left}px`; el.style.top = `${top}px`;
-    });
-  }
-
-  function renderPagination(totalPages, currentPage, goToPage) {
-    pagination.innerHTML = '';
-    totalPages = Math.max(1, totalPages);
-    const mk = (label, title, fn, active=false) => {
-      const b = document.createElement('button');
-      b.textContent = label; if (title) b.title = title; if (active) b.classList.add('active'); b.onclick = fn; return b;
-    };
-    if (currentPage > 1) pagination.appendChild(mk('‹ Prev', 'Previous', () => goToPage(currentPage - 1)));
-    let s = Math.max(1, currentPage - 2), e = Math.min(totalPages, s + 4); if (e - s < 4) s = Math.max(1, e - 4);
-    for (let i = s; i <= e; i++) pagination.appendChild(mk(String(i), '', () => goToPage(i), i === currentPage));
-    if (currentPage < totalPages) pagination.appendChild(mk('Next ›', 'Next', () => goToPage(currentPage + 1)));
-  }
-
-  function applyCssVars() {
-    container.style.setProperty('--menu-max-width', `${settings.menuMaxWidth}px`);
-    container.style.setProperty('--menu-min-width', `${settings.menuMinWidth}px`);
-    container.style.setProperty('--menu-max-height', `${settings.menuMinHeight}px`);
-    container.style.setProperty('--menu-max-height', `${settings.menuMaxHeightVh}vh`);
-    container.style.setProperty('--menu-radius', `${settings.menuRadius}px`);
-    container.style.setProperty('--tile-radius', `${settings.tileRadius}px`);
-    container.style.setProperty('--bg-rgba', hexToRgba(settings.bg, settings.bgAlpha));
-    container.style.setProperty('--text', settings.text);
-    container.style.setProperty('--accent', settings.accent);
-    container.style.setProperty('--border-color', settings.borderColor);
-    container.style.setProperty('--border-width', `${settings.borderWidth}px`);
-    container.style.setProperty('--shadow', `${settings.shadow}`);
-    container.style.setProperty('--emoji-tile', `${settings.emojiSize}px`);
-    container.style.setProperty('--sticker-tile-height', `${settings.stickerSize}px`);
-    container.style.setProperty('--gif-tile-height', `${settings.gifSize}px`);
-    container.style.setProperty('--media-tile-height', `${settings.gifSize}px`);
-    container.style.setProperty('--gif-min-col', `${settings.gifMinCol}px`);
-    container.style.setProperty('--gap-emoji', `${settings.gapEmoji}px`);
-    container.style.setProperty('--gap-large', `${settings.gapLarge}px`);
-    container.style.setProperty('--font-family', settings.fontFamily);
-    container.style.setProperty('--ui-font-size', `${settings.uiFontSize}px`);
-    container.style.setProperty('--tile-bg', settings.tileBg);
-    container.style.setProperty('--hover-scale', `${settings.hoverScale}`);
-    container.style.setProperty('--glow-strength', `${settings.glowStrength}px`);
-    container.style.setProperty('--star-color', settings.starColor);
-    container.style.setProperty('--star-bg', settings.starBg);
-    container.style.setProperty('--star-border', settings.starBorder);
-    container.style.setProperty('--star-top', `${settings.starTop}px`);
-    container.style.setProperty('--star-right', `${settings.starRight}px`);
-    container.style.setProperty('--star-size', `${settings.starSize}px`);
-    container.style.setProperty('--star-sm-size', `${settings.starSmSize}px`);
-    container.style.setProperty('--btn-radius', `${settings.btnRadius}px`);
-    container.style.setProperty('--search-radius', `${settings.searchRadius}px`);
-    container.style.setProperty('--search-border', settings.searchBorder);
-    container.style.setProperty('--pagination-bg', settings.paginationBg);
-    container.style.setProperty('--pagination-active-bg', settings.paginationActiveBg);
-    container.style.setProperty('--pagination-color', settings.paginationColor);
-    container.style.setProperty('--backdrop-blur', `${settings.backdropBlur}px`);
-    container.style.setProperty('--z', settings.zIndex);
-  }
-  function ensureCustomCssTag() {
-    let tag = document.getElementById('uni-custom-css');
-    if (!tag) { tag = document.createElement('style'); tag.id = 'uni-custom-css'; document.head.appendChild(tag); }
-    return tag;
-  }
-  function applyCustomCss(css) { const tag = ensureCustomCssTag(); tag.textContent = css || ''; GM_SetValueSafe(CUSTOM_CSS_KEY, css || ''); }
-  (function initCustomCssFromStore() { const css = GM_GetValueSafe(CUSTOM_CSS_KEY, ''); if (css && css.trim()) applyCustomCss(css); })();
-
-  async function fetchJsonRetry(url, tries = 2) {
-    let lastErr;
-    for (let i = 0; i < tries; i++) {
-      try {
-        const j = await fetchJson(url);
-        if (!j || typeof j !== 'object') throw new Error('Invalid JSON object');
-        return j;
-      } catch (e) { lastErr = e; await new Promise(r => setTimeout(r, 150 * (i + 1))); }
-    }
-    throw lastErr || new Error('Request failed');
-  }
-  async function loadEmojiJsons() {
-    const loaded = [];
-    const failures = [];
-    for (const group of EMOJI_URL_GROUPS) {
-      let ok = false, lastErr = null;
-      for (const url of group) {
-        try { const json = await fetchJsonRetry(url, 2); loaded.push(json); ok = true; break; } catch (e) { lastErr = e; }
-      }
-      if (!ok) failures.push({ group, error: lastErr });
-    }
-    if (loaded.length === 0) throw new Error(`No emoji packs loaded`);
-    if (failures.length) { console.warn(`[Ultimate Emojis] ${failures.length} pack(s) failed to load.`, failures); showSoftNotice(`Emojis: loaded ${loaded.length}/${EMOJI_COUNT} packs. Some failed — see console.`); }
-    return Object.assign({}, ...loaded);
-  }
-
-  loadEmojiJsons()
-    .then(merged => {
-      allEmojis = toArrayFromMerged(merged, 'emoji');
-      if (activeTab === 'emoji') showEmojiLibraryPage(currentEmojiPage || 1);
-      refreshHomeStatus();
-    })
-    .catch(err => {
-      console.error('Emoji load failed:', err);
-      showSoftNotice('Failed to load emojis. Check console.');
-      if (activeTab === 'emoji') gridEmoji.innerHTML = '<div style="opacity:.8;padding:14px;text-align:center;">Could not load emoji packs.</div>';
-      refreshHomeStatus();
-    });
-
-  function showEmojiLibraryPage(page) {
-    activeTab = 'emoji';
-    homeTab.classList.remove('active'); emojiTab.classList.add('active'); stickerTab.classList.remove('active'); gifTab.classList.remove('active'); settingsTab.classList.remove('active');
-
-    const term = searchInput.value.trim().toLowerCase();
-    let list = !term ? allEmojis : allEmojis.filter(e =>
-      e.name.toLowerCase().includes(term) ||
-      e.tags.some(t => (''+t).toLowerCase().includes(term))
-    );
-    if (favOnlyEmoji) list = list.filter(e => isFav('emoji', e));
-    filteredEmojis = sortFavFirstStable(list, favEmojiV2, favEmojiLegacy);
-    const { totalPages, page: newPage } = ensurePage(filteredEmojis.length, 108, page);
-    currentEmojiPage = newPage;
-    const start = (currentEmojiPage - 1) * 108;
-    const pageItems = filteredEmojis.slice(start, start + 108);
-
-    homePanel.style.display = 'none';
-    gridEmoji.innerHTML = '';
-    gridEmoji.style.display = '';
-    gridStickers.style.display = 'none';
-    gridGifs.style.display = 'none';
-    settingsPanel.style.display = 'none';
-    emojiToolbar.style.display = '';
-    stickerToolbar.style.display = 'none';
-    gifToolbar.style.display = 'none';
-    searchBarDiv.style.display = '';
-    pagination.style.display = '';
-    pageJumpDiv.style.display = '';
-
-    pageItems.forEach(item => {
-      const tile = document.createElement('div');
-      tile.className = 'uni-emoji-tile';
-      const img = document.createElement('img');
-      img.src = item.url; img.alt = item.name; img.title = item.name; img.loading = 'lazy';
-
-      const star = document.createElement('button');
-      star.className = 'uni-star-sm' + (isFav('emoji', item) ? ' active' : '');
-      star.title = isFav('emoji', item) ? 'Unfavorite' : 'Favorite';
-      star.textContent = '★';
-
-      star.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const prevTotal = filteredEmojis.length;
-        favToggle('emoji', item);
-        showEmojiLibraryPage(currentEmojiPage);
-        if (favOnlyEmoji && prevTotal > 0 && filteredEmojis.length === 0 && currentEmojiPage > 1) {
-          showEmojiLibraryPage(currentEmojiPage - 1);
-        }
+      Object.entries(favMeta).forEach(([key,m])=>{
+        if(tf&&m.type!==tf)return;
+        arr.push({
+          url: m.isText ? '' : key,
+          text: m.isText ? (m.text||m.name||key) : '',
+          name: m.name||key.split('/').pop(),
+          type: m.type,
+          isText: !!m.isText,
+          originalIndex: m.ts||0,
+          animated: true
+        });
       });
-
-      img.addEventListener('click', () => {
-        insertBBCode(`[img=${getEmojiInsertSize()}]${item.url}[/img] `);
-        tile.style.opacity = '0.6'; setTimeout(()=> tile.style.opacity = '1', 200);
-      });
-      img.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        const favNow = isFav('emoji', item);
-        showCtxMenu([
-          { label: favNow ? 'Unfavorite Emoji' : 'Favorite Emoji', onClick: () => {
-              const prevTotal = filteredEmojis.length;
-              favToggle('emoji', item);
-              showEmojiLibraryPage(currentEmojiPage);
-              if (favOnlyEmoji && prevTotal > 0 && filteredEmojis.length === 0 && currentEmojiPage > 1) {
-                showEmojiLibraryPage(currentEmojiPage - 1);
-              }
-            }},
-          { label: 'Copy Emoji URL', onClick: () => copyText(item.url) },
-          { label: 'Copy Emoji Name', onClick: () => copyText(item.name) }
-        ], e.clientX, e.clientY);
-      });
-
-      tile.appendChild(img);
-      tile.appendChild(star);
-      gridEmoji.appendChild(tile);
-    });
-
-    renderPagination(totalPages, currentEmojiPage, (p) => showEmojiLibraryPage(p));
-    searchInput.placeholder = "Search emojis…";
-  }
-
-  let stickersLoaded = false;
-  Promise.all(STICKERS_JSON_URLS.map(url => fetchJson(url)))
-    .then(results => {
-      if (!results || results.length === 0) { stickersLoaded = true; refreshHomeStatus(); return; }
-      const merged = mergeJsonObjects(results);
-      allStickers = toArrayFromMerged(merged, 'sticker');
-      stickersLoaded = true;
-      refreshHomeStatus();
-    })
-    .catch(err => { console.error("Stickers JSON error:", err); stickersLoaded = true; refreshHomeStatus(); });
-
-  function showStickerPage(page) {
-    activeTab = 'stickers';
-    homeTab.classList.remove('active'); emojiTab.classList.remove('active'); stickerTab.classList.add('active'); gifTab.classList.remove('active'); settingsTab.classList.remove('active');
-
-    if (!stickersLoaded && STICKERS_JSON_URLS.length > 0) {
-      homePanel.style.display = 'none';
-      gridEmoji.style.display = 'none'; gridGifs.style.display = 'none'; settingsPanel.style.display = 'none';
-      gridStickers.style.display = ''; showEmpty(gridStickers, 'Loading stickers…');
-      pagination.innerHTML = ''; return;
-    }
-    const term = searchInput.value.trim().toLowerCase();
-    let list = allStickers;
-    if (term) list = list.filter(e => e.name.toLowerCase().includes(term) || (e.tags && e.tags.some(t => (''+t).toLowerCase().includes(term))));
-    if (favOnlyStickers) list = list.filter(e => isFav('sticker', e));
-    filteredStickers = sortFavFirstStable(list, favStickerV2, favStickerLegacy);
-
-    const { totalPages, page: newPage } = ensurePage(filteredStickers.length, 24, page);
-    currentStickerPage = newPage;
-    const start = (currentStickerPage - 1) * 24;
-    const pageItems = filteredStickers.slice(start, start + 24);
-
-    homePanel.style.display = 'none';
-    gridEmoji.style.display = 'none'; gridGifs.style.display = 'none'; settingsPanel.style.display = 'none';
-    gridStickers.style.display = ''; gridStickers.innerHTML = '';
-    emojiToolbar.style.display = 'none';
-    stickerToolbar.style.display = '';
-    gifToolbar.style.display = 'none';
-    searchBarDiv.style.display = ''; pagination.style.display = ''; pageJumpDiv.style.display = '';
-
-    if (!pageItems.length) showEmpty(gridStickers, 'No results');
-    pageItems.forEach(item => {
-      const tile = document.createElement('div'); tile.className = 'uni-tile';
-      const img = document.createElement('img');
-      img.src = item.url; img.alt = item.name; img.title = item.name; img.loading = 'lazy';
-
-      const star = document.createElement('button');
-      star.className = 'uni-star' + (isFav('sticker', item) ? ' active' : '');
-      star.title = isFav('sticker', item) ? 'Unfavorite' : 'Favorite';
-      star.textContent = '★';
-
-      star.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const prevTotal = filteredStickers.length;
-        favToggle('sticker', item);
-        showStickerPage(currentStickerPage);
-        if (favOnlyStickers && prevTotal > 0 && filteredStickers.length === 0 && currentStickerPage > 1) {
-          showStickerPage(currentStickerPage - 1);
-        }
-      });
-
-      img.addEventListener('click', () => {
-        insertBBCode(`[img=${getStickerInsertSize()}]${item.url}[/img] `);
-        tile.style.opacity = '0.6'; setTimeout(() => (tile.style.opacity = '1'), 200);
-      });
-      img.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        const favNow = isFav('sticker', item);
-        showCtxMenu([
-          { label: favNow ? 'Unfavorite Sticker' : 'Favorite Sticker', onClick: () => {
-              const prevTotal = filteredStickers.length;
-              favToggle('sticker', item);
-              showStickerPage(currentStickerPage);
-              if (favOnlyStickers && prevTotal > 0 && filteredStickers.length === 0 && currentStickerPage > 1) {
-                showStickerPage(currentStickerPage - 1);
-              }
-            }},
-          { label: 'Copy Sticker URL', onClick: () => copyText(item.url) },
-          { label: 'Copy Sticker Name', onClick: () => copyText(item.name) }
-        ], e.clientX, e.clientY);
-      });
-
-      tile.appendChild(img); tile.appendChild(star);
-      gridStickers.appendChild(tile);
-    });
-
-    renderPagination(totalPages, currentStickerPage, (p) => showStickerPage(p));
-    searchInput.placeholder = "Search stickers…";
-  }
-
-  function parseLocalGifUrls(str) {
-    return String(str || '')
-      .split(/\r?\n|,/)
-      .map(s => s.trim())
-      .filter(Boolean);
-  }
-  async function loadLocalGifs() {
-    const urls = parseLocalGifUrls(settings.localGifUrls);
-    if (!urls.length) {
-      allGifs = [];
-      gifsLoaded = true;
-      localGifStatus = 'No packs configured';
-      refreshHomeStatus();
-      return;
-    }
-    try {
-      const results = await Promise.allSettled(urls.map(u => fetchJson(u)));
-      const ok = results.filter(r => r.status === 'fulfilled').map(r => r.value);
-      const merged = mergeJsonObjects(ok);
-      allGifs = toArrayFromMerged(merged, 'gif');
-      gifsLoaded = true;
-      localGifStatus = `Loaded ${ok.length}/${urls.length} pack(s)`;
-      refreshHomeStatus();
-    } catch {
-      allGifs = [];
-      gifsLoaded = true;
-      localGifStatus = 'Failed to load packs';
-      refreshHomeStatus();
-    }
-  }
-
-  const tenorState = new Map();
-  function tenorKeyFor(q, limit) { return `${q || ''}::${limit}`; }
-  async function fetchTenorPage(q, page, limit) {
-    const key = getApiKey('tenor'); if (!key) throw new Error('Missing Tenor API key.');
-    const qKey = tenorKeyFor(q, limit);
-    if (!tenorState.has(qKey)) tenorState.set(qKey, { pages: new Map(), nextByPage: new Map() });
-    const state = tenorState.get(qKey);
-    if (state.pages.has(page)) return { items: state.pages.get(page), hasNext: !!state.nextByPage.get(page) };
-    let pos = null;
-    if (page > 1) {
-      for (let p = 1; p < page; p++) {
-        if (!state.pages.has(p)) {
-          const prevPos = p === 1 ? null : state.nextByPage.get(p - 1) || null;
-          const { items, next } = await tenorCall(q, limit, prevPos, key);
-          state.pages.set(p, items); state.nextByPage.set(p, next || '');
-        }
-      }
-      pos = state.nextByPage.get(page - 1) || null;
-    }
-    const { items, next } = await tenorCall(q, limit, pos, key);
-    state.pages.set(page, items);
-    state.nextByPage.set(page, next || '');
-    return { items, hasNext: !!next };
-  }
-  async function tenorCall(q, limit, pos, key) {
-    const base = 'https://tenor.googleapis.com/v2';
-    const endpoint = q ? 'search' : 'featured';
-    const params = [ `key=${encodeURIComponent(key)}`, `limit=${limit}`, 'media_filter=gif', 'contentfilter=medium' ];
-    if (q) params.push(`q=${encodeURIComponent(q)}`);
-    if (pos) params.push(`pos=${encodeURIComponent(pos)}`);
-    const url = `${base}/${endpoint}?${params.join('&')}`;
-    const json = await fetchJson(url);
-    const results = json?.results || json?.gifs || [];
-    const items = results.map((r, i) => {
-      const mf = r.media_formats || {};
-      const url = mf.gif?.url || mf.mediumgif?.url || mf.tinygif?.url || '';
-      const name = r.content_description || r.id || 'tenor';
-      return { name, url, tags: [], animated: true, type: 'gif', originalIndex: i };
-    }).filter(x => x.url);
-    const next = json?.next || '';
-    return { items, next };
-  }
-  async function fetchGiphy({ q, page, limit }) {
-    const key = getApiKey('giphy'); if (!key) throw new Error('Missing GIPHY API key.');
-    const offset = (page - 1) * limit;
-    const base = 'https://api.giphy.com/v1/gifs';
-    const params = q
-      ? `search?api_key=${encodeURIComponent(key)}&q=${encodeURIComponent(q)}&limit=${limit}&offset=${offset}&rating=pg-13&lang=en`
-      : `trending?api_key=${encodeURIComponent(key)}&limit=${limit}&offset=${offset}&rating=pg-13`;
-    const url = `${base}/${params}`;
-    const json = await fetchJson(url);
-    if (!json?.meta || json.meta.status !== 200) throw new Error(`GIPHY error (${json?.meta?.status||'n/a'}): ${json?.meta?.msg||'Unknown'}`);
-    const data = Array.isArray(json.data) ? json.data : [];
-    const total = Math.max(1, Math.min(json.pagination?.total_count || (page * limit + data.length), 1000));
-    const items = data.map((g, i) => {
-      const images = g.images || {};
-      const u = images.downsized_medium?.url || images.original?.url || images.fixed_width?.url || '';
-      const name = g.title || g.slug || g.id || 'giphy';
-      return { name, url: u, tags: [], animated: true, type: 'gif', originalIndex: i };
-    }).filter(x => x.url);
-    return { items, total };
-  }
-  function parseRedditSubs() {
-    return String(settings.redditSubs || '').split(/[, ]+/).map(s => s.trim()).filter(Boolean).slice(0, 50);
-  }
-  async function fetchReddit({ q, page, limit }) {
-    const subs = parseRedditSubs();
-    const subsStr = subs.length ? subs.join('+') : 'gifs';
-    const perPage = Math.min(limit * page, 100);
-    const base = `https://www.reddit.com/r/${subsStr}`;
-    const url = q
-      ? `${base}/search.json?q=${encodeURIComponent(q)}&restrict_sr=1&sort=relevance&t=year&limit=${perPage}&raw_json=1`
-      : `${base}/hot.json?limit=${perPage}&raw_json=1`;
-    const json = await fetchJson(url);
-    const posts = json?.data?.children || [];
-    const allowImg = !!settings.redditIncludeImages;
-    const list = [];
-    posts.forEach((ch, i) => {
-      const d = ch?.data || {};
-      const u = d.url_overridden_by_dest || d.url || '';
-      if (/\.gif($|\?)/i.test(u) || (allowImg && /\.(jpe?g|png|webp)($|\?)/i.test(u))) {
-        list.push({ name: d.title || d.id || 'reddit', url: u, tags: [], animated: /\.gif($|\?)/i.test(u), type: 'gif', originalIndex: i });
-      }
-    });
-    const start = (page - 1) * limit;
-    return { items: list.slice(start, start + limit), total: Math.max(perPage, list.length) };
-  }
-  async function fetchTumblr({ q, page, limit }) {
-    const key = getApiKey('tumblr'); if (!key) throw new Error('Missing Tumblr API key.');
-    const tag = (q || 'gif').trim();
-    const url = `https://api.tumblr.com/v2/tagged?tag=${encodeURIComponent(tag)}&api_key=${encodeURIComponent(key)}&limit=${limit}`;
-    const json = await fetchJson(url);
-    const arr = json?.response || [];
-    const items = [];
-    arr.forEach((p, i) => {
-      (p.photos || []).forEach(ph => {
-        const u = ph?.original_size?.url || '';
-        if (/\.gif($|\?)/i.test(u)) items.push({ name: p.summary || p.blog_name || 'tumblr', url: u, tags: [], animated: true, type: 'gif', originalIndex: i });
-      });
-    });
-    return { items: items.slice(0, limit), total: page * limit + items.length };
-  }
-  async function fetchImgur({ q, page, limit }) {
-    const cid = getApiKey('imgur'); if (!cid) throw new Error('Missing Imgur Client-ID.');
-    if (q && q.trim()) {
-      const url = `https://api.imgur.com/3/gallery/search/?q=${encodeURIComponent(q)}`;
-      const data = await fetchJson(url, { Authorization: `Client-ID ${cid}` });
-      const list = (data.data || []).flatMap(entry => {
-        if (entry.images && entry.images.length) {
-          return entry.images.filter(im => (im.type || '').toLowerCase() === 'image/gif').map(im => im.link);
-        }
-        if ((entry.type || '').toLowerCase() === 'image/gif' && entry.link) return [entry.link];
-        return [];
-      });
-      const items = list.slice((page - 1) * limit, (page - 1) * limit + limit).map((u, i) => ({ name: 'imgur', url: u, tags: [], animated: true, type: 'gif', originalIndex: i }));
-      return { items, total: list.length };
-    } else {
-      const pageIndex = Math.max(0, page - 1);
-      const url = `https://api.imgur.com/3/gallery/hot/viral/${pageIndex}.json`;
-      const data = await fetchJson(url, { Authorization: `Client-ID ${cid}` });
-      const arr = (data.data || []).flatMap(entry => {
-        if (entry.images && entry.images.length) {
-          return entry.images.filter(im => (im.type || '').toLowerCase() === 'image/gif').map(im => im.link);
-        }
-        if ((entry.type || '').toLowerCase() === 'image/gif' && entry.link) return [entry.link];
-        return [];
-      });
-      const items = arr.slice(0, limit).map((u, i) => ({ name: 'imgur', url: u, tags: [], animated: true, type: 'gif', originalIndex: i }));
-      return { items, total: page * limit + items.length };
-    }
-  }
-
-  function providerEnabled(p) {
-    if (p === 'local' || p === 'reddit') return true;
-    if (p === 'tenor') return !!settings.provTenor;
-    if (p === 'giphy') return !!settings.provGiphy;
-    if (p === 'imgur') return !!settings.provImgur;
-    if (p === 'tumblr') return !!settings.provTumblr;
-    return true;
-  }
-  function updateProviderButtons() {
-    gifToolbar.querySelectorAll('.provider-btn').forEach(btn => {
-      const p = btn.getAttribute('data-provider');
-      btn.style.display = providerEnabled(p) ? '' : 'none';
-    });
-    if (!providerEnabled(settings.gifProvider)) {
-      const order = ['tenor','giphy','imgur','tumblr','reddit','local'];
-      const next = order.find(p => providerEnabled(p)) || 'local';
-      settings.gifProvider = next;
-      saveSettings();
-    }
-    syncGifProviderUI();
-    refreshHomeStatus();
-  }
-  function syncGifProviderUI() {
-    gifToolbar.querySelectorAll('.provider-btn').forEach(b => {
-      const val = b.getAttribute('data-provider');
-      b.classList.toggle('active', val === settings.gifProvider);
-    });
-    gifFavOnlyBtn?.classList.toggle('active', favOnlyGifs);
-  }
-  function favMetaAdd(item) {
-    if (!item || !item.url) return;
-    favMeta[item.url] = favMeta[item.url] || { name: item.name || '', type: 'gif', ts: Date.now() };
-    if (!favMeta[item.url].name && item.name) favMeta[item.url].name = item.name; favMeta[item.url].ts = Date.now();
-    saveFavMeta();
-  }
-  function favMetaRemove(url) { if (url && favMeta[url]) { delete favMeta[url]; saveFavMeta(); } }
-  function getFavList(typeFilter) {
-    const arr = [];
-    Object.entries(favMeta).forEach(([url, meta]) => {
-      if (typeFilter && meta.type !== typeFilter) return;
-      arr.push({ url, name: meta.name || url.split('/').pop(), type: meta.type, originalIndex: meta.ts || 0, animated: true });
-    });
-    arr.sort((a,b) => (b.originalIndex - a.originalIndex));
+    } catch(e) { console.error('[UE] getFavList error:', e); }
+    arr.sort((a,b)=>b.originalIndex-a.originalIndex);
     return arr;
   }
 
-  async function showGifPage(page) {
-    activeTab = 'gifs';
-    homeTab.classList.remove('active'); emojiTab.classList.remove('active'); stickerTab.classList.remove('active'); gifTab.classList.add('active'); settingsTab.classList.remove('active');
+  // ═══════════════════════════════════════════════
+  //  UTILITIES
+  // ═══════════════════════════════════════════════
+  function hexRgba(h,a){const m=String(h).replace('#','');const s=m.length===3?m.split('').map(c=>c+c).join(''):m;const b=parseInt(s||'000000',16);return`rgba(${(b>>16)&255},${(b>>8)&255},${b&255},${Math.max(0,Math.min(1,Number(a)||1))})`;}
+  function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};}
+  function ensurePage(len,pp,pg){const tp=Math.max(1,Math.ceil(len/pp));return{totalPages:tp,page:Math.min(Math.max(pg,1),tp)};}
 
-    const perPage = Math.max(1, Number(settings.gifPerPage) || 24);
+  function fetchJson(url,headers){
+    return new Promise((res,rej)=>{
+      GM_xmlhttpRequest({
+        method:'GET',url,headers:headers||{},timeout:12000,
+        onload:r=>{try{res(JSON.parse(r.responseText));}catch{rej(new Error('Parse'));}},
+        onerror:()=>rej(new Error('Network')),
+        ontimeout:()=>rej(new Error('Timeout'))
+      });
+    });
+  }
+  function fetchText(url){
+    return new Promise((res,rej)=>{
+      GM_xmlhttpRequest({method:'GET',url,timeout:8000,
+        onload:r=>res(r.responseText),onerror:()=>rej(new Error('Fail')),ontimeout:()=>rej(new Error('Timeout'))
+      });
+    });
+  }
 
-    homePanel.style.display = 'none';
-    gridEmoji.style.display = 'none'; gridStickers.style.display = 'none'; settingsPanel.style.display = 'none';
-    gridGifs.style.display = ''; gridGifs.innerHTML = '';
-    emojiToolbar.style.display = 'none';
-    stickerToolbar.style.display = 'none';
-    gifToolbar.style.display = '';
-    searchBarDiv.style.display = ''; pageJumpDiv.style.display = '';
-    updateProviderButtons();
+  function toArray(merged,type='emoji'){
+    let idx=0;
+    return Object.entries(merged).map(([name,val])=>{
+      const url=val&&typeof val==='object'?(val.url||''):(val||'');
+      if(!url)return null;
+      return{name,url,tags:Array.isArray(val?.tags)?val.tags:[],animated:val?.animated??/\.(gif|apng)($|\?)/i.test(url),type,originalIndex:idx++};
+    }).filter(Boolean);
+  }
 
-    if (favOnlyGifs) {
-      const q = searchInput.value.trim().toLowerCase();
-      let favs = getFavList('gif');
-      if (q) favs = favs.filter(x => (x.name || '').toLowerCase().includes(q));
-      const { totalPages, page: newPage } = ensurePage(favs.length, perPage, page);
-      currentGifPage = newPage;
-      const start = (currentGifPage - 1) * perPage;
-      const pageItems = favs.slice(start, start + perPage);
-      if (!pageItems.length) showEmpty(gridGifs, 'No favorites yet'); else pageItems.forEach(renderGifTile);
-      renderPagination(totalPages, currentGifPage, (p) => showGifPage(p));
-      searchInput.placeholder = "Favorites (all providers)";
-      return;
+  function insertContent(item){
+    if(!item)return;
+    const size=item.type==='emoji'?(S.emojiSize||48):item.type==='sticker'?(S.stickerSize||256):(S.gifInsertSize||S.gifSize||256);
+    let code;
+    if(item.isText){
+      code=item.text||item.name||'';
+    } else if(S.insertFormat==='markdown') code=`![${item.name||''}](${item.url})`;
+    else if(S.insertFormat==='html') code=`<img src="${item.url}" width="${size}" alt="${item.name||''}">`;
+    else if(S.insertFormat==='url') code=item.url;
+    else if(S.insertFormat==='custom'&&S.insertTemplate) code=S.insertTemplate.replace(/\$\{url\}/g,item.url||'').replace(/\$\{size\}/g,size).replace(/\$\{name\}/g,item.name||'');
+    else code=`[img=${size}]${item.url}[/img] `;
+
+    // Target Logic
+    let input = null;
+
+    // 1. Try specific tracker classes (previous request)
+    input = document.querySelector('textarea.form__textarea.chatV2__input');
+
+    // 2. Try IRC (The Lounge, Kiwi, generic)
+    if(!input) input = document.querySelector('#input, #chat-input, .irc-input, textarea.irc-input, input.irc-input');
+
+    // 3. Try standard Private Tracker IDs
+    if (!input) {
+        const ids=['chatbox__messages-create','new-comment__textarea','reply-comment','bbcode-message','bbcode-content','bbcode-signature','bbcode-about'];
+        input=document.querySelector(ids.map(id=>`textarea#${id}`).join(', '));
     }
 
-    const q = searchInput.value.trim();
-    try {
-      if (settings.gifProvider === 'local') {
-        if (!gifsLoaded) await loadLocalGifs();
-        const urls = parseLocalGifUrls(settings.localGifUrls);
-        if (!urls.length) {
-          showEmpty(gridGifs, 'Add Local GIF pack URLs in Settings → Local GIF packs');
-          renderPagination(1, 1, ()=>{});
-          searchInput.placeholder = "Local GIFs — add URLs in Settings";
-          return;
+    if(!input)return;
+
+    // Handle insertion
+    if(typeof input.selectionStart==='number' && typeof input.setRangeText==='function') {
+        input.setRangeText(code, input.selectionStart, input.selectionEnd, 'end');
+    } else {
+        input.value+=code;
+    }
+
+    input.focus();
+    try{input.dispatchEvent(new Event('input',{bubbles:true}));}catch{}
+    addRecent(item);
+    if(S.closeOnInsert)container.style.display='none';
+  }
+
+  async function copyText(t){
+    try{if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(t);return;}}catch{}
+    try{if(typeof GM_setClipboard==='function'){GM_setClipboard(t,'text');return;}}catch{}
+    const ta=document.createElement('textarea');ta.value=t;ta.style.cssText='position:fixed;opacity:0';
+    document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();
+  }
+
+  // Lazy loading
+  let _lo=null;
+  function lazyObs(){
+    if(_lo)return _lo;
+    _lo=new IntersectionObserver(entries=>{
+      for(const e of entries)if(e.isIntersecting&&e.target.dataset.src){e.target.src=e.target.dataset.src;delete e.target.dataset.src;_lo.unobserve(e.target);}
+    },{rootMargin:`${S.lazyLoadThreshold||150}px`});
+    return _lo;
+  }
+  function mkImg(url,alt){
+    const img=document.createElement('img');img.alt=alt||'';
+    if(S.showTooltips)img.title=alt||'';
+    img.dataset.src=url;img.src='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    lazyObs().observe(img);return img;
+  }
+  function destroyLazy(){if(_lo){_lo.disconnect();_lo=null;}}
+
+  // Context menu (FIXED - proper cleanup)
+  let ctxEl=null;
+  let _ctxHideHandler=null;
+
+  function hideCtx(){if(ctxEl)ctxEl.style.display='none';}
+
+  function showCtx(items,x,y){
+    if(!ctxEl){
+      ctxEl=document.createElement('div');ctxEl.id='uni-ctx-menu';
+      ctxEl.addEventListener('contextmenu',e=>e.preventDefault());
+      document.body.appendChild(ctxEl);
+      _ctxHideHandler=e=>{
+        if(ctxEl&&ctxEl.style.display!=='none'&&!ctxEl.contains(e.target)){
+          hideCtx();
         }
-        const term = q.toLowerCase();
-        let list = !term ? allGifs : allGifs.filter(e =>
-          e.name.toLowerCase().includes(term) ||
-          (e.tags && e.tags.some(t => (''+t).toLowerCase().includes(term)))
-        );
-        list = sortFavFirstStable(list, favGifV2, favGifLegacy);
-        const { totalPages, page: newPage } = ensurePage(list.length, perPage, page);
-        currentGifPage = newPage;
-        const start = (currentGifPage - 1) * perPage;
-        const pageItems = list.slice(start, start + perPage);
-        if (!pageItems.length) showEmpty(gridGifs, 'No results'); else pageItems.forEach(renderGifTile);
-        renderPagination(totalPages, currentGifPage, (p) => showGifPage(p));
-        searchInput.placeholder = "Search GIFs — Provider: Local";
-      } else if (settings.gifProvider === 'tenor') {
-        const { items, hasNext } = await fetchTenorPage(q, page, perPage);
-        currentGifPage = page;
-        if (!items.length) showEmpty(gridGifs, 'No results'); else items.forEach(renderGifTile);
-        const totalPages = currentGifPage + (hasNext ? 1 : 0);
-        renderPagination(totalPages, currentGifPage, (p) => showGifPage(p));
-        searchInput.placeholder = `Search GIFs — Provider: Tenor (${q ? 'search' : 'featured'})`;
-      } else if (settings.gifProvider === 'giphy') {
-        const { items, total } = await fetchGiphy({ q, page, limit: perPage });
-        currentGifPage = page;
-        if (!items.length) showEmpty(gridGifs, 'No results'); else items.forEach(renderGifTile);
-        renderPagination(Math.max(1, Math.ceil(total / perPage)), currentGifPage, (p) => showGifPage(p));
-        searchInput.placeholder = `Search GIFs — Provider: GIPHY (${q ? 'search' : 'trending'})`;
-      } else if (settings.gifProvider === 'imgur') {
-        const { items, total } = await fetchImgur({ q, page, limit: perPage });
-        currentGifPage = page;
-        if (!items.length) showEmpty(gridGifs, 'No results'); else items.forEach(renderGifTile);
-        renderPagination(Math.max(1, Math.ceil(total / perPage)), currentGifPage, (p) => showGifPage(p));
-        searchInput.placeholder = `Search GIFs — Provider: Imgur`;
-      } else if (settings.gifProvider === 'reddit') {
-        const { items, total } = await fetchReddit({ q, page, limit: perPage });
-        currentGifPage = page;
-        if (!items.length) showEmpty(gridGifs, 'No results'); else items.forEach(renderGifTile);
-        renderPagination(Math.max(1, Math.ceil(total / perPage)), currentGifPage, (p) => showGifPage(p));
-        searchInput.placeholder = `Search ${settings.redditIncludeImages ? 'GIFs/Images' : 'GIFs'} — Provider: Reddit`;
-      } else if (settings.gifProvider === 'tumblr') {
-        const { items, total } = await fetchTumblr({ q, page, limit: perPage });
-        currentGifPage = page;
-        if (!items.length) showEmpty(gridGifs, 'No results'); else items.forEach(renderGifTile);
-        renderPagination(Math.max(1, Math.ceil(total / perPage)), currentGifPage, (p) => showGifPage(p));
-        searchInput.placeholder = `Search GIFs — Provider: Tumblr`;
-      }
-    } catch (e) {
-      showEmpty(gridGifs, (e.message || 'Provider error') + '<br/><span style="opacity:.7;font-size:12px;">Check API keys in Settings → Import APIs</span>');
+      };
+      document.addEventListener('mousedown',_ctxHideHandler,true);
+      window.addEventListener('scroll',hideCtx,true);
+      document.addEventListener('keydown',e=>{if(e.key==='Escape')hideCtx();});
+    }
+    ctxEl.innerHTML='';
+    (items||[]).forEach(it=>{
+      const b=document.createElement('button');
+      b.innerHTML=it.icon?`<i class="fa-solid ${it.icon}"></i> ${it.label}`:it.label;
+      b.addEventListener('click',e=>{
+        e.preventDefault();
+        e.stopPropagation();
+        hideCtx();
+        // Use setTimeout to prevent the click from interfering with current rendering
+        setTimeout(()=>{
+          try{it.onClick?.();}catch(err){console.error('[UE] ctx action error:',err);}
+        },0);
+      });
+      ctxEl.appendChild(b);
+    });
+    ctxEl.style.display='block';
+    requestAnimationFrame(()=>{
+      if(!ctxEl)return;
+      const r=ctxEl.getBoundingClientRect();
+      ctxEl.style.left=Math.min(x,innerWidth-r.width-8)+'px';
+      ctxEl.style.top=Math.min(y,innerHeight-r.height-8)+'px';
+    });
+  }
+
+  function notice(msg){
+    let n=document.getElementById('uni-notice');
+    if(!n){
+      n=document.createElement('div');n.id='uni-notice';
+      Object.assign(n.style,{position:'absolute',top:'6px',left:'12px',right:'12px',
+        background:'rgba(0,0,0,.7)',color:'#fff',padding:'8px 14px',borderRadius:'8px',
+        fontSize:'12px',zIndex:'20',pointerEvents:'none',textAlign:'center',transition:'opacity .3s'});
+      container.appendChild(n);
+    }
+    n.textContent=msg;n.style.display='block';n.style.opacity='1';
+    clearTimeout(n._t);
+    n._t=setTimeout(()=>{n.style.opacity='0';setTimeout(()=>n.style.display='none',300);},3500);
+  }
+
+  // ═══════════════════════════════════════════════
+  //  DOM
+  // ═══════════════════════════════════════════════
+  const old=document.getElementById('uni-emoji-menu');if(old)old.remove();
+  const container=document.createElement('div');container.id='uni-emoji-menu';document.body.appendChild(container);
+
+  // ═══════════════════════════════════════════════
+  //  CSS
+  // ═══════════════════════════════════════════════
+  function cssVars(){
+    const s=S;
+    return`#uni-emoji-menu{--mw:${s.menuWidth}px;--mh:${s.menuHeightPx}px;--mvh:${s.menuMaxHeightVh}vh;--mr:${s.menuRadius}px;--tr:${s.tileRadius}px;--bg:${hexRgba(s.bg,s.bgAlpha)};--txt:${s.text};--acc:${s.accent};--bc:${s.borderColor};--bw:${s.borderWidth}px;--sh:${s.shadow};--et:${s.emojiSize}px;--gh:${s.gifSize}px;--gmc:${s.gifMinCol}px;--ge:${s.gapEmoji}px;--gl:${s.gapLarge}px;--ff:${s.fontFamily};--fs:${s.uiFontSize}px;--tbg:${s.tileBg};--hs:${s.hoverScale};--gs:${s.glowStrength}px;--sc:${s.starColor};--sbg:${s.starBg};--sbc:${s.starBorder};--st:${s.starTop}px;--sr:${s.starRight}px;--ss:${s.starSize}px;--sss:${s.starSmSize}px;--br:${s.btnRadius}px;--xr:${s.searchRadius}px;--xb:${s.searchBorder};--pb:${s.paginationBg};--pab:${s.paginationActiveBg};--pc:${s.paginationColor};--blur:${s.backdropBlur}px;--z:${s.zIndex};--sbw:${s.scrollbarWidth}px;--sbth:${s.scrollbarThumb};--sbt:${s.scrollbarTrack}}`;
+  }
+
+  const CSS=`
+#uni-emoji-menu{position:fixed;left:60%;top:10%;width:var(--mw);height:var(--mh);max-height:var(--mvh);background:var(--bg);color:var(--txt);border-radius:var(--mr);border:var(--bw) solid var(--bc);box-shadow:0 8px 24px rgba(0,0,0,var(--sh));padding:10px;display:none;font-family:var(--ff);font-size:var(--fs);user-select:none;flex-direction:column;z-index:var(--z);backdrop-filter:blur(var(--blur));overflow:hidden;box-sizing:border-box}
+#uni-emoji-menu *{box-sizing:border-box}
+#uni-emoji-menu ::-webkit-scrollbar{width:var(--sbw)}
+#uni-emoji-menu ::-webkit-scrollbar-track{background:var(--sbt);border-radius:2px}
+#uni-emoji-menu ::-webkit-scrollbar-thumb{background:var(--sbth);border-radius:2px}
+#uni-emoji-menu ::-webkit-scrollbar-thumb:hover{background:var(--acc)}
+#uni-emoji-menu .hdr{display:flex;align-items:center;justify-content:center;position:relative;margin-bottom:4px;min-height:26px}
+#uni-emoji-menu .hdr .title{font-weight:700;font-size:15px;display:flex;align-items:center;gap:6px}
+#uni-emoji-menu .hdr .ver{color:#888;font-size:11px;font-weight:600}
+#uni-emoji-menu .hdr .dot{width:7px;height:7px;border-radius:50%;background:#43b581;box-shadow:0 0 5px #43b581;display:inline-block}
+#uni-emoji-menu .hdr .drag{position:absolute;left:6px;cursor:move;color:#aaa;font-size:18px}
+#uni-emoji-menu .hdr .close{position:absolute;right:6px;cursor:pointer;color:#ff7373;font-size:16px;background:none;border:none;line-height:1}
+#uni-emoji-menu .tabs{display:flex;gap:4px;margin:2px 0 4px;flex-wrap:wrap}
+#uni-emoji-menu .tab{font-weight:600;font-size:12px;color:#ccc;background:none;border:none;border-radius:7px;padding:4px 10px;cursor:pointer;opacity:.7;transition:all .15s;display:flex;align-items:center;gap:5px;white-space:nowrap}
+#uni-emoji-menu .tab:hover{background:#46484c;opacity:1}
+#uni-emoji-menu .tab.active{background:#46484c;opacity:1;color:#fff}
+#uni-emoji-menu .tab.st{margin-left:auto}
+#uni-emoji-menu .toolbar{display:flex;align-items:center;gap:6px;margin:2px 6px;flex-wrap:wrap}
+#uni-emoji-menu .search-row{display:flex;margin:2px 0 6px}
+#uni-emoji-menu #uni-search{position:sticky;top:0;background:rgba(255,255,255,.03);color:var(--txt);height:32px;border:2px solid var(--xb);border-radius:var(--xr);width:100%;padding:5px 10px;font-size:12px;transition:all .15s}
+#uni-emoji-menu #uni-search::placeholder{color:#777}
+#uni-emoji-menu #uni-search:focus{background:rgba(255,255,255,.05);box-shadow:0 0 5px var(--acc);outline:none}
+#uni-emoji-menu .sub-tabs{display:flex;gap:3px;margin:2px 4px 4px;flex-wrap:wrap}
+#uni-emoji-menu .sub-tab{font-size:11px;font-weight:600;color:#bbb;background:#1a1b1e;border:1px solid var(--bc);border-radius:6px;padding:3px 8px;cursor:pointer;transition:all .12s;display:flex;align-items:center;gap:4px}
+#uni-emoji-menu .sub-tab:hover{background:#2a2c30;color:#fff}
+#uni-emoji-menu .sub-tab.active{background:var(--acc);color:#fff;border-color:var(--acc)}
+#uni-emoji-menu .eg{display:grid;grid-template-columns:repeat(auto-fill,var(--et));gap:var(--ge);overflow-y:auto;flex:1;padding:4px 4px 8px;justify-content:start;}
+#uni-emoji-menu .et{position:relative;width:var(--et);height:var(--et);display:flex;align-items:center;justify-content:center;background:var(--tbg);border-radius:6px;transition:transform .1s,box-shadow .1s; overflow: hidden;}
+#uni-emoji-menu .et img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;cursor:pointer}
+#uni-emoji-menu .et:hover{transform:scale(var(--hs));box-shadow:0 0 var(--gs) var(--acc)}
+#uni-emoji-menu .et .te{cursor:pointer;line-height:1;text-align:center;width:100%;height:100%;display:flex;align-items:center;justify-content:center;}
+#uni-emoji-menu .sg{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:var(--gl);overflow-y:auto;flex:1;padding:6px 4px 10px;position:relative}
+#uni-emoji-menu .gg{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--gmc),1fr));gap:var(--gl);overflow-y:auto;flex:1;padding:6px 4px 10px;position:relative}
+#uni-emoji-menu .tl{position:relative;width:100%;height:var(--gh);background:var(--tbg);border-radius:var(--tr);display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .1s,box-shadow .1s;overflow:hidden}
+#uni-emoji-menu .tl img{max-width:100%;max-height:100%;object-fit:contain;border-radius:var(--tr);cursor:pointer}
+#uni-emoji-menu .tl:hover{transform:scale(var(--hs));box-shadow:0 0 var(--gs) var(--acc)}
+#uni-emoji-menu .star,#uni-emoji-menu .ssm{position:absolute;top:var(--st);right:var(--sr);display:grid;place-items:center;background:var(--sbg);border:1px solid var(--sbc);color:var(--sc);border-radius:999px;cursor:pointer;line-height:1;opacity:0;transform:scale(.9);pointer-events:none;transition:opacity .12s,transform .12s}
+#uni-emoji-menu .star{width:var(--ss);height:var(--ss);font-size:calc(var(--ss)*.55)}
+#uni-emoji-menu .ssm{width:var(--sss);height:var(--sss);font-size:calc(var(--sss)*.55)}
+#uni-emoji-menu .et:hover .ssm,#uni-emoji-menu .tl:hover .star{opacity:1;transform:scale(1);pointer-events:auto}
+#uni-emoji-menu .star.active,#uni-emoji-menu .ssm.active{opacity:.6;pointer-events:auto}
+#uni-emoji-menu .gt{position:absolute;left:5px;right:5px;bottom:5px;font-size:10px;color:#fff;background:rgba(0,0,0,.45);padding:2px 5px;border-radius:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;pointer-events:none}
+#uni-emoji-menu .pill{background:#202225;border:1px solid var(--bc);color:#ddd;border-radius:var(--br);padding:4px 9px;cursor:pointer;font-weight:600;font-size:11px;transition:background .12s;display:flex;align-items:center;gap:4px}
+#uni-emoji-menu .pill.active{background:var(--acc);border-color:var(--acc);color:#fff}
+#uni-emoji-menu .pill:hover{background:#36393f}
+#uni-emoji-menu .pb{background:#202225;border:1px solid var(--bc);color:#ddd;border-radius:var(--br);padding:4px 8px;cursor:pointer;font-weight:600;font-size:11px;transition:background .12s}
+#uni-emoji-menu .pb:hover{background:#36393f}
+#uni-emoji-menu .pb.active{background:var(--acc);color:#fff;border-color:var(--acc)}
+#uni-emoji-menu .pager{display:flex;justify-content:center;gap:3px;margin-top:4px;flex-wrap:wrap}
+#uni-emoji-menu .pager button{background:var(--pb);border:none;border-radius:3px;color:var(--pc);padding:4px 8px;font-size:12px;cursor:pointer;min-width:28px;font-weight:600;transition:all .15s}
+#uni-emoji-menu .pager button:hover:not(.active){background:#36393f;color:#fff;box-shadow:0 0 4px var(--acc)}
+#uni-emoji-menu .pager button.active{background:var(--pab);color:#fff;box-shadow:0 0 6px var(--acc)}
+#uni-emoji-menu .pj{display:flex;justify-content:center;gap:5px;margin-top:5px}
+#uni-emoji-menu .pj input{width:65px;padding:4px;font-size:12px;border:none;border-radius:12px;background:#202225;color:#ddd;text-align:center}
+#uni-emoji-menu .pj button{background:var(--acc);border:none;border-radius:4px;padding:4px 10px;color:#fff;font-weight:600;font-size:12px;cursor:pointer}
+#uni-emoji-menu .panel{display:none;overflow-y:auto;flex:1;padding:8px 6px}
+#uni-emoji-menu .section{background:rgba(0,0,0,.15);border:1px solid var(--bc);border-radius:9px;padding:10px;margin:6px 0}
+#uni-emoji-menu .section h3{margin:0 0 6px;font-size:13px;color:#fff;display:flex;align-items:center;gap:6px}
+#uni-emoji-menu .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:3px 0}
+#uni-emoji-menu .btn{background:var(--acc);border:none;border-radius:7px;padding:4px 10px;color:#fff;font-weight:600;font-size:11px;cursor:pointer;transition:filter .12s;display:inline-flex;align-items:center;gap:4px}
+#uni-emoji-menu .btn.sec{background:#202225;border:1px solid var(--bc);color:#ddd}
+#uni-emoji-menu .btn.warn{background:#b93131}
+#uni-emoji-menu .btn:hover{filter:brightness(.9)}
+#uni-emoji-menu .badge{font-size:10px;margin-left:4px}
+#uni-emoji-menu .badge-ok{color:#43b581}
+#uni-emoji-menu .badge-err{color:#ff6464}
+#uni-emoji-menu .badge-warn{color:#faa61a}
+#uni-emoji-menu .empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;opacity:.8;padding:14px;font-size:13px}
+#uni-emoji-menu .home-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:6px}
+#uni-emoji-menu .home-card{background:rgba(0,0,0,.15);border:1px solid var(--bc);border-radius:7px;padding:9px}
+#uni-emoji-menu .home-card h4{margin:0 0 5px;font-size:12px;display:flex;align-items:center;gap:5px}
+#uni-emoji-menu .chip{display:inline-block;background:#202225;border:1px solid var(--bc);border-radius:999px;padding:2px 7px;font-size:10px;margin:1px 3px 1px 0}
+#uni-emoji-menu .link-btn{display:inline-flex;align-items:center;gap:5px;background:#202225;border:1px solid var(--bc);color:#ddd;border-radius:7px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;text-decoration:none;transition:all .12s}
+#uni-emoji-menu .link-btn:hover{background:#36393f;color:#fff;border-color:var(--acc)}
+#uni-emoji-menu .stat-num{font-size:18px;font-weight:700;color:var(--acc);margin-right:4px}
+#uni-emoji-menu .api-disp{font-family:monospace;font-size:11px;color:#888;background:#1a1b1e;border:1px solid var(--bc);border-radius:5px;padding:4px 7px;word-break:break-all}
+#uni-emoji-menu .api-disp.has{color:#43b581}
+#uni-emoji-menu input.api-key{width:100%;padding:5px 7px;border:1px solid var(--bc);border-radius:5px;background:#1a1b1e;color:#e3e5e8;font-size:12px}
+#uni-emoji-menu input.mini{width:70px;padding:3px 5px;border:1px solid var(--bc);border-radius:5px;background:#1a1b1e;color:#e3e5e8;font-size:12px}
+#uni-emoji-menu input.fi{width:100%;max-width:350px;padding:4px 7px;border:1px solid var(--bc);border-radius:5px;background:#1a1b1e;color:#e3e5e8;font-size:12px}
+#uni-emoji-menu input[type="color"]{width:28px;height:24px;padding:0;border:none;border-radius:5px;cursor:pointer}
+#uni-emoji-menu select.sel{padding:4px 7px;border-radius:5px;border:1px solid var(--bc);background:#202225;color:#e3e5e8;font-size:12px}
+#uni-emoji-menu .range{display:flex;align-items:center;gap:6px}
+#uni-emoji-menu .range input[type="range"]{flex:1;max-width:180px}
+#uni-emoji-menu .range .rv{min-width:42px;text-align:right;font-size:11px;opacity:.7}
+#uni-emoji-menu textarea.area{width:100%;min-height:80px;background:#1f2124;color:#e8e8e8;border:1px solid var(--bc);border-radius:7px;padding:6px;font-size:11px;resize:vertical}
+#uni-emoji-menu label.cb{display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer}
+#uni-emoji-menu .recent-grid{display:grid;grid-template-columns:repeat(auto-fill,44px);gap:5px;padding:4px 0}
+#uni-emoji-menu .recent-grid img,.recent-grid .ri{width:44px;height:44px;object-fit:contain;border-radius:5px;cursor:pointer;background:var(--tbg);display:flex;align-items:center;justify-content:center;}
+#uni-emoji-menu .recent-grid img:hover,.recent-grid .ri:hover{transform:scale(1.1);box-shadow:0 0 6px var(--acc)}
+#uni-ctx-menu{position:fixed;z-index:2147483647;background:#2b2d31;color:#e3e5e8;border:1px solid #2a2c30;border-radius:7px;min-width:170px;box-shadow:0 8px 28px rgba(0,0,0,.5);padding:3px;display:none}
+#uni-ctx-menu button{width:100%;text-align:left;background:transparent;border:none;color:#e3e5e8;padding:6px 9px;border-radius:5px;cursor:pointer;font-weight:600;font-size:11px;display:flex;align-items:center;gap:6px}
+#uni-ctx-menu button:hover{background:#3a3c43}
+#uni-ctx-menu button i{width:14px;text-align:center;font-size:11px;opacity:.8}
+#global-emoji-button.emoji-button{position:fixed;right:15px;bottom:35px;z-index:2147483647;cursor:pointer;font-size:38px;display:inline-flex;align-items:center;justify-content:center;transition:transform .2s,filter .2s;user-select:none;filter:grayscale(100%)}
+#global-emoji-button.emoji-button:hover{transform:scale(1.1);filter:grayscale(0%)}
+`;
+
+  GM_addStyle(cssVars()+CSS);
+  let _vt=null;
+  function applyVars(){
+    if(!_vt){_vt=document.createElement('style');_vt.id='uni-vars';document.head.appendChild(_vt);}
+    _vt.textContent=cssVars();
+    container.classList.toggle('compact',!!S.compactMode);
+    if(S.menuPositionX)container.style.left=S.menuPositionX;
+    if(S.menuPositionY)container.style.top=S.menuPositionY;
+  }
+  function applyCustomCss(css){let t=document.getElementById('uni-custom-css');if(!t){t=document.createElement('style');t.id='uni-custom-css';document.head.appendChild(t);}t.textContent=css||'';GM_Set(K.customCss,css||'');}
+  {const c=GM_Get(K.customCss,'');if(c?.trim())applyCustomCss(c);}
+
+  // ═══════════════════════════════════════════════
+  //  HTML SKELETON
+  // ═══════════════════════════════════════════════
+  container.innerHTML=`
+<div class="hdr">
+<span class="drag" title="Drag"><i class="fa-solid fa-arrows-up-down-left-right"></i></span>
+  <span class="title"><i><img src="https://ptpimg.me/91xfz9.gif" style="width: 27px; height: 25px;" /></i> Ultimate Emojis <span class="ver">v${VERSION}</span> <span class="dot"></span></span>
+<button class="close" title="Close"><i class="fa-solid fa-xmark"></i></button>
+</div>
+<div class="tabs" id="tb"></div>
+<div class="panel" id="p-home"></div>
+<div class="toolbar" id="tb-e" style="display:none"><button class="pill" id="e-fav"><i class="fa-solid fa-star" style="color: #e7a423;"></i></button><span style="flex:1"></span><span class="badge" id="e-st"></span></div>
+<div class="sub-tabs" id="e-subs" style="display:none"></div>
+<div class="search-row" id="sr" style="display:none"><input type="text" id="uni-search" placeholder="Search..." autocomplete="off"></div>
+<div class="eg" id="ge" style="display:none"></div>
+<div class="toolbar" id="tb-g" style="display:none">
+<span style="opacity:.5;font-size:10px"><i class="fa-solid fa-globe"></i></span>
+<button class="pb" data-p="local"><i class="fa-solid fa-hard-drive"></i> Local</button>
+<button class="pb" data-p="tenor"><i class="fa-solid fa-t"></i> Tenor</button>
+<button class="pb" data-p="giphy"><i class="fa-solid fa-g"></i> GIPHY</button>
+<button class="pb" data-p="imgur"><i class="fa-solid fa-image"></i> Imgur</button>
+<button class="pb" data-p="reddit"><i class="fa-brands fa-reddit"></i> Reddit</button>
+<button class="pb" data-p="tumblr"><i class="fa-brands fa-tumblr"></i> Tumblr</button>
+<span style="flex:1"></span>
+<button class="pill" id="g-fav"><i class="fa-solid fa-star" style="color: #e7a423;"></i></button>
+</div>
+<div class="toolbar" id="tb-s" style="display:none"><button class="pill" id="s-fav"><i class="fa-solid fa-star" style="color: #e7a423;"></i></button></div>
+<div class="sg" id="gs" style="display:none"></div>
+<div class="gg" id="gg" style="display:none"></div>
+<div class="pager" id="pager" style="display:none"></div>
+<div class="pj" id="pj" style="display:none"><input type="number" id="pji" min="1" placeholder="Pg"><button id="pjg">Go</button></div>
+<div class="panel" id="p-set" style="display:none"></div>
+`;
+
+  const $=s=>container.querySelector(s);
+  const gE=$('#ge'),gS=$('#gs'),gG=$('#gg');
+  const pager=$('#pager'),pjDiv=$('#pj'),pjIn=$('#pji'),pjGo=$('#pjg');
+  const searchIn=$('#uni-search'),sRow=$('#sr');
+  const tbE=$('#tb-e'),tbG=$('#tb-g'),tbS=$('#tb-s');
+  const eSubs=$('#e-subs');
+  const hPanel=$('#p-home'),sPanel=$('#p-set');
+  const tabBar=$('#tb');
+  const eSt=$('#e-st');
+
+  // ═══════════════════════════════════════════════
+  //  TABS
+  // ═══════════════════════════════════════════════
+  const TAB_D={home:{l:'Home',i:'fa-house'},gifs:{l:'GIFs',i:'fa-film'},stickers:{l:'Stickers',i:'fa-note-sticky'},emojis:{l:'Emojis',i:'fa-face-smile'},recent:{l:'Recent',i:'fa-clock-rotate-left'}};
+
+  function buildTabs(){
+    tabBar.innerHTML='';
+    const ord=(S.tabOrder||'home,gifs,stickers,emojis').split(',').map(s=>s.trim()).filter(Boolean);
+    if(S.recentEnabled&&!ord.includes('recent'))ord.push('recent');
+    ord.forEach(k=>{const d=TAB_D[k];if(!d)return;const b=document.createElement('div');b.className='tab'+(k===activeTab?' active':'');b.dataset.tab=k;b.innerHTML=`<i class="fa-solid ${d.i}"></i> ${d.l}`;b.addEventListener('click',()=>switchTab(k));tabBar.appendChild(b);});
+    const sb=document.createElement('div');sb.className='tab st'+(activeTab==='settings'?' active':'');sb.dataset.tab='settings';sb.innerHTML='<i class="fa-solid fa-gear"></i>';sb.addEventListener('click',()=>switchTab('settings'));tabBar.appendChild(sb);
+  }
+  function setTabUI(t){tabBar.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));}
+  function hideAll(){[hPanel,gE,gS,gG,sPanel].forEach(e=>e.style.display='none');[tbE,tbG,tbS,sRow,pager,pjDiv,eSubs].forEach(e=>e.style.display='none');}
+
+  // ═══════════════════════════════════════════════
+  //  PAGINATION
+  // ═══════════════════════════════════════════════
+  function renderPager(total,cur,goTo){
+    pager.innerHTML='';pager.style.display='';pjDiv.style.display='';
+    total=Math.max(1,total);
+    const mk=(l,fn,act=false)=>{const b=document.createElement('button');b.textContent=l;if(act)b.classList.add('active');b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();fn();});return b;};
+    if(cur>1)pager.appendChild(mk('‹',()=>goTo(cur-1)));
+    let s=Math.max(1,cur-3),e=Math.min(total,s+6);if(e-s<6)s=Math.max(1,e-6);
+    if(s>1){pager.appendChild(mk('1',()=>goTo(1)));if(s>2)pager.appendChild(mk('…',()=>{}));}
+    for(let i=s;i<=e;i++)pager.appendChild(mk(String(i),()=>goTo(i),i===cur));
+    if(e<total){if(e<total-1)pager.appendChild(mk('…',()=>{}));pager.appendChild(mk(String(total),()=>goTo(total)));}
+    if(cur<total)pager.appendChild(mk('›',()=>goTo(cur+1)));
+  }
+
+  // ═══════════════════════════════════════════════
+  //  EMOJI LOADING
+  // ═══════════════════════════════════════════════
+  async function fetchFast(urls){for(const u of urls){try{return await fetchJson(u);}catch{}}throw new Error('All failed');}
+
+  async function loadEmojis(){
+    const ts=Number(GM_Get(K.emojiCacheTs,'0'));
+    if(Date.now()-ts<CACHE_TTL){
+      try{const c=JSON.parse(GM_Get(K.emojiCache,'null'));if(c&&Object.keys(c).length>0){allEmojis=toArray(c,'emoji');emojiProg={loaded:EMOJI_COUNT,total:EMOJI_COUNT,done:true,cached:true};updEmojiUI();return;}}catch{}
+    }
+    emojiProg={loaded:0,total:EMOJI_COUNT,done:false,cached:false};updEmojiUI();
+    const all=[],BATCH=8;
+    for(let b=0;b<EMOJI_URL_GROUPS.length;b+=BATCH){
+      const chunk=EMOJI_URL_GROUPS.slice(b,b+BATCH);
+      const res=await Promise.allSettled(chunk.map(g=>fetchFast(g)));
+      res.forEach(r=>{if(r.status==='fulfilled'&&r.value)all.push(r.value);emojiProg.loaded++;});
+      updEmojiUI();
+      if(all.length>0){allEmojis=toArray(Object.assign({},...all),'emoji');if(activeTab==='emojis'&&activeEmojiSub==='custom'&&!_rendering)showEmojiPage(currentEmojiPage);}
+    }
+    if(all.length>0){const m=Object.assign({},...all);allEmojis=toArray(m,'emoji');try{GM_Set(K.emojiCache,JSON.stringify(m));GM_Set(K.emojiCacheTs,String(Date.now()));}catch{}}
+    emojiProg.done=true;updEmojiUI();
+  }
+  function updEmojiUI(){
+    if(!eSt)return;
+    const{loaded,total,done,cached}=emojiProg;
+    eSt.innerHTML=done?`<i class="fa-solid fa-circle-check"></i> ${allEmojis.length}${cached?' (cached)':''}`:`<i class="fa-solid fa-spinner fa-spin"></i> ${loaded}/${total}`;
+    eSt.className='badge '+(done?'badge-ok':'badge-warn');
+  }
+
+  async function loadStickers(){try{const r=await Promise.all(STICKERS_JSON_URLS.map(u=>fetchJson(u)));allStickers=toArray(Object.assign({},...r.filter(Boolean)),'sticker');}catch(e){console.error('Stickers:',e);}stickersLoaded=true;}
+
+  async function loadLocalGifs(){
+    const urls=String(S.localGifUrls||'').split(/\r?\n|,/).map(s=>s.trim()).filter(Boolean);
+    if(!urls.length){allGifs=[];gifsLoaded=true;localGifStatus='No packs';return;}
+    try{const r=await Promise.allSettled(urls.map(u=>fetchJson(u)));const ok=r.filter(r=>r.status==='fulfilled').map(r=>r.value);allGifs=toArray(Object.assign({},...ok),'gif');gifsLoaded=true;localGifStatus=`${ok.length}/${urls.length} loaded`;}
+    catch{allGifs=[];gifsLoaded=true;localGifStatus='Failed';}
+  }
+
+  // ═══════════════════════════════════════════════
+  //  EMOJI SUB-CATEGORY DATA
+  // ═══════════════════════════════════════════════
+  function getSubData(){
+    if(activeEmojiSub==='custom')return allEmojis;
+    let items=[],idx=0;
+    if(activeEmojiSub==='emojipedia'){
+      Object.entries(EMOJIPEDIA).forEach(([grp,emojis])=>{
+        if(!emojis)return;
+        emojis.forEach(e=>{if(e)items.push({name:e,url:'',text:e,isText:true,tags:[grp.toLowerCase()],type:'emoji',originalIndex:idx++,animated:false});});
+      });
+    } else if(activeEmojiSub==='symbols'){
+      Object.entries(SYMBOL_DATA).forEach(([grp,emojis])=>{
+        if(!emojis)return;
+        emojis.forEach(e=>{if(e)items.push({name:e,url:'',text:e,isText:true,tags:[grp.toLowerCase()],type:'emoji',originalIndex:idx++,animated:false});});
+      });
+    } else if(activeEmojiSub==='flags'){
+      if(FLAG_DATA)FLAG_DATA.forEach((e,i)=>{if(e)items.push({name:e,url:'',text:e,isText:true,tags:['flag'],type:'emoji',originalIndex:i,animated:false});});
+    } else if(activeEmojiSub==='kaomoji'){
+      Object.entries(KAOMOJI).forEach(([grp,kms])=>{
+        kms.forEach(k=>{items.push({name:k,url:'',text:k,isText:true,tags:[grp.toLowerCase(),'kaomoji'],type:'emoji',originalIndex:idx++,animated:false});});
+      });
+    } else if(activeEmojiSub==='ascii'){
+      ASCII_ART.forEach((a,i)=>{items.push({name:a,url:'',text:a,isText:true,tags:['ascii'],type:'emoji',originalIndex:i,animated:false});});
+    }
+    return items;
+  }
+
+  function buildSubTabs(){
+    eSubs.innerHTML='';
+    Object.entries(EMOJI_CATS).forEach(([id,cat])=>{
+      const b=document.createElement('div');
+      b.className='sub-tab'+(activeEmojiSub===id?' active':'');
+      b.innerHTML=`<i class="fa-solid ${cat.icon}"></i> ${cat.label}`;
+      b.title=cat.desc;
+      b.addEventListener('click',()=>{activeEmojiSub=id;S.emojiSubTab=id;saveS();showEmojiPage(1);});
+      eSubs.appendChild(b);
+    });
+  }
+
+  // ═══════════════════════════════════════════════
+  //  EMOJI PAGE (FIXED - guard against re-entrant)
+  // ═══════════════════════════════════════════════
+  function showEmojiPage(page){
+    if(_rendering)return;
+    _rendering=true;
+    try{
+      activeTab='emojis';setTabUI('emojis');hideAll();
+      tbE.style.display='';eSubs.style.display='';sRow.style.display='';gE.style.display='';
+      buildSubTabs();
+
+      const pp=S.emojiPerPage||108;
+      const term=searchIn.value.trim().toLowerCase();
+      let data=getSubData();
+
+      if(term)data=data.filter(e=>e.name.toLowerCase().includes(term)||(e.tags&&e.tags.some(t=>String(t).toLowerCase().includes(term))));
+      if(favOnlyEmoji)data=data.filter(e=>isFav('emoji',e));
+      if(activeEmojiSub==='custom')data=sortFavFirst(data,'emoji');
+
+      const{totalPages,page:p}=ensurePage(data.length,pp,page);
+      currentEmojiPage=p;
+      const items=data.slice((p-1)*pp,p*pp);
+      const frag=document.createDocumentFragment();
+      gE.innerHTML='';
+
+      items.forEach(item=>{
+        const tile=document.createElement('div');tile.className='et';
+
+        if(item.isText){
+          const span=document.createElement('span');span.className='te';span.textContent=item.text||item.name;
+          if(S.showTooltips)span.title=item.name;span.style.cursor='pointer';
+          span.addEventListener('click',e=>{e.stopPropagation();insertContent(item);tile.style.opacity='.5';setTimeout(()=>tile.style.opacity='1',180);});
+          span.addEventListener('contextmenu',e=>{
+            e.preventDefault();e.stopPropagation();
+            showCtx([
+              {icon:'fa-copy',label:'Copy',onClick:()=>{copyText(item.text||item.name);notice('Copied!');}},
+              {icon:'fa-star',label:isFav('emoji',item)?'Unfavorite':'Favorite',onClick:()=>{favToggle('emoji',item);showEmojiPage(currentEmojiPage);}}
+            ],e.clientX,e.clientY);
+          });
+          tile.appendChild(span);
+        } else {
+          const img=mkImg(item.url,item.name);
+          img.addEventListener('click',e=>{e.stopPropagation();insertContent(item);tile.style.opacity='.5';setTimeout(()=>tile.style.opacity='1',180);});
+          img.addEventListener('contextmenu',e=>{
+            e.preventDefault();e.stopPropagation();
+            showCtx([
+              {icon:'fa-star',label:isFav('emoji',item)?'Unfavorite':'Favorite',onClick:()=>{favToggle('emoji',item);showEmojiPage(currentEmojiPage);}},
+              {icon:'fa-link',label:'Copy URL',onClick:()=>{copyText(item.url);notice('Copied!');}},
+              {icon:'fa-code',label:'Copy BBCode',onClick:()=>{copyText(`[img=${S.emojiSize}]${item.url}[/img]`);notice('Copied!');}}
+            ],e.clientX,e.clientY);
+          });
+          tile.appendChild(img);
+          const star=document.createElement('button');star.className='ssm'+(isFav('emoji',item)?' active':'');
+          star.innerHTML='<i class="fa-solid fa-star"></i>';
+          star.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();favToggle('emoji',item);showEmojiPage(currentEmojiPage);});
+          tile.appendChild(star);
+        }
+        frag.appendChild(tile);
+      });
+
+      gE.appendChild(frag);
+      if(!items.length)gE.innerHTML='<div class="empty"><i class="fa-solid fa-ghost"></i>&nbsp; No emojis found</div>';
+      renderPager(totalPages,currentEmojiPage,p=>showEmojiPage(p));
+      searchIn.placeholder=`Search ${EMOJI_CATS[activeEmojiSub]?.label||'emojis'}…`;
+      $('#e-fav').classList.toggle('active',favOnlyEmoji);
+      updEmojiUI();
+    } catch(err) {
+      console.error('[UE] showEmojiPage error:', err);
+      gE.innerHTML='<div class="empty"><i class="fa-solid fa-triangle-exclamation"></i> Render error</div>';
+    } finally {
+      _rendering=false;
     }
   }
 
-  function renderGifTile(item) {
-    const tile = document.createElement('div'); tile.className = 'uni-tile';
-    const img = document.createElement('img'); img.src = item.url; img.alt = item.name; img.title = item.name; img.loading = 'lazy';
-
-    if (settings.gifShowTitles) {
-      const title = document.createElement('div');
-      title.className = 'gif-title';
-      title.textContent = item.name || '';
-      tile.appendChild(title);
-    }
-
-    if (settings.showGifStar) {
-      const star = document.createElement('button');
-      star.className = 'uni-star' + (isFav('gif', item) ? ' active' : '');
-      star.title = isFav('gif', item) ? 'Unfavorite' : 'Favorite';
-      star.textContent = '★';
-
-      star.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const perPage = Math.max(1, Number(settings.gifPerPage) || 24);
-        const pageSlice = favOnlyGifs ? getFavList('gif').slice((currentGifPage - 1) * perPage, currentGifPage * perPage).length : null;
-        favToggle('gif', item);
-        if (isFav('gif', item)) favMetaAdd(item); else favMetaRemove(item.url);
-        if (favOnlyGifs) {
-          const afterSlice = getFavList('gif').slice((currentGifPage - 1) * perPage, currentGifPage * perPage).length;
-          if (pageSlice && afterSlice === 0 && currentGifPage > 1) showGifPage(currentGifPage - 1);
-          else showGifPage(currentGifPage);
-        } else {
-          showGifPage(currentGifPage);
-        }
+  // ═══════════════════════════════════════════════
+  //  STICKER PAGE
+  // ═══════════════════════════════════════════════
+  function showStickerPage(page){
+    if(_rendering)return;_rendering=true;
+    try{
+      activeTab='stickers';setTabUI('stickers');hideAll();
+      tbS.style.display='';sRow.style.display='';gS.style.display='';
+      if(!stickersLoaded){gS.innerHTML='<div class="empty"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</div>';return;}
+      const pp=S.stickerPerPage||24;const term=searchIn.value.trim().toLowerCase();
+      let list=term?allStickers.filter(e=>e.name.toLowerCase().includes(term)||(e.tags&&e.tags.some(t=>String(t).toLowerCase().includes(term)))):allStickers;
+      if(favOnlyStickers)list=list.filter(e=>isFav('sticker',e));
+      list=sortFavFirst(list,'sticker');
+      const{totalPages,page:p}=ensurePage(list.length,pp,page);
+      currentStickerPage=p;const items=list.slice((p-1)*pp,p*pp);
+      const frag=document.createDocumentFragment();gS.innerHTML='';
+      items.forEach(item=>{
+        const tile=document.createElement('div');tile.className='tl';
+        const img=mkImg(item.url,item.name);
+        img.addEventListener('click',e=>{e.stopPropagation();insertContent(item);tile.style.opacity='.5';setTimeout(()=>tile.style.opacity='1',180);});
+        img.addEventListener('contextmenu',e=>{e.preventDefault();e.stopPropagation();showCtx([{icon:'fa-star',label:isFav('sticker',item)?'Unfavorite':'Favorite',onClick:()=>{favToggle('sticker',item);showStickerPage(currentStickerPage);}},{icon:'fa-link',label:'Copy URL',onClick:()=>{copyText(item.url);notice('Copied!');}}],e.clientX,e.clientY);});
+        const star=document.createElement('button');star.className='star'+(isFav('sticker',item)?' active':'');star.innerHTML='<i class="fa-solid fa-star"></i>';
+        star.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();favToggle('sticker',item);showStickerPage(currentStickerPage);});
+        tile.appendChild(img);tile.appendChild(star);frag.appendChild(tile);
       });
+      gS.appendChild(frag);
+      if(!items.length)gS.innerHTML='<div class="empty"><i class="fa-solid fa-ghost"></i>&nbsp; No stickers</div>';
+      renderPager(totalPages,currentStickerPage,p=>showStickerPage(p));
+      searchIn.placeholder='Search stickers…';
+      $('#s-fav').classList.toggle('active',favOnlyStickers);
+    }catch(err){console.error('[UE] showStickerPage error:',err);}
+    finally{_rendering=false;}
+  }
 
+  // ═══════════════════════════════════════════════
+  //  GIF PROVIDERS
+  // ═══════════════════════════════════════════════
+  const tenorCache=new Map();
+  async function fetchTenorPage(q,page,limit){
+    const key=getKey('tenor');if(!key)throw new Error('No Tenor API key');
+    const ck=`${q}::${limit}`;if(!tenorCache.has(ck))tenorCache.set(ck,{pages:new Map(),next:new Map()});
+    const st=tenorCache.get(ck);
+    if(st.pages.has(page))return{items:st.pages.get(page),hasNext:!!st.next.get(page)};
+    for(let p=1;p<=page;p++){
+      if(st.pages.has(p))continue;
+      const pos=p===1?null:st.next.get(p-1)||null;
+      const ep=q?'search':'featured';
+      const params=[`key=${encodeURIComponent(key)}`,`limit=${limit}`,'media_filter=gif','contentfilter=medium'];
+      if(q)params.push(`q=${encodeURIComponent(q)}`);if(pos)params.push(`pos=${encodeURIComponent(pos)}`);
+      const json=await fetchJson(`https://tenor.googleapis.com/v2/${ep}?${params.join('&')}`);
+      const items=(json?.results||[]).map((r,i)=>{const mf=r.media_formats||{};return{name:r.content_description||'tenor',url:mf.gif?.url||mf.mediumgif?.url||mf.tinygif?.url||'',tags:[],animated:true,type:'gif',originalIndex:i};}).filter(x=>x.url);
+      st.pages.set(p,items);st.next.set(p,json?.next||'');
+    }
+    return{items:st.pages.get(page)||[],hasNext:!!st.next.get(page)};
+  }
+  async function fetchGiphy({q,page,limit}){const key=getKey('giphy');if(!key)throw new Error('No GIPHY key');const off=(page-1)*limit;const ep=q?`search?api_key=${encodeURIComponent(key)}&q=${encodeURIComponent(q)}&limit=${limit}&offset=${off}&rating=pg-13`:`trending?api_key=${encodeURIComponent(key)}&limit=${limit}&offset=${off}&rating=pg-13`;const json=await fetchJson(`https://api.giphy.com/v1/gifs/${ep}`);const data=json?.data||[];const total=Math.min(json?.pagination?.total_count||data.length,5000);return{items:data.map((g,i)=>{const imgs=g.images||{};return{name:g.title||'giphy',url:imgs.downsized_medium?.url||imgs.original?.url||'',tags:[],animated:true,type:'gif',originalIndex:i};}).filter(x=>x.url),total};}
+  async function fetchReddit({q,page,limit}){const subs=String(S.redditSubs||'').split(/[, ]+/).filter(Boolean).slice(0,50).join('+')||'gifs';const pp=Math.min(limit*page,100);const url=q?`https://www.reddit.com/r/${subs}/search.json?q=${encodeURIComponent(q)}&restrict_sr=1&sort=relevance&t=year&limit=${pp}&raw_json=1`:`https://www.reddit.com/r/${subs}/hot.json?limit=${pp}&raw_json=1`;const json=await fetchJson(url);const ai=!!S.redditIncludeImages;const list=(json?.data?.children||[]).map((ch,i)=>{const d=ch?.data||{},u=d.url_overridden_by_dest||d.url||'';if(/\.gif($|\?)/i.test(u)||(ai&&/\.(jpe?g|png|webp)($|\?)/i.test(u)))return{name:d.title||'reddit',url:u,tags:[],animated:/\.gif/i.test(u),type:'gif',originalIndex:i};return null;}).filter(Boolean);const s=(page-1)*limit;return{items:list.slice(s,s+limit),total:list.length};}
+  async function fetchTumblr({q,page,limit}){const key=getKey('tumblr');if(!key)throw new Error('No Tumblr key');const json=await fetchJson(`https://api.tumblr.com/v2/tagged?tag=${encodeURIComponent(q||'gif')}&api_key=${encodeURIComponent(key)}&limit=${limit}`);return{items:(json?.response||[]).flatMap((p,i)=>(p.photos||[]).filter(ph=>/\.gif($|\?)/i.test(ph?.original_size?.url||'')).map(ph=>({name:p.summary||'tumblr',url:ph.original_size.url,tags:[],animated:true,type:'gif',originalIndex:i}))).slice(0,limit),total:page*limit+limit};}
+  async function fetchImgur({q,page,limit}){const cid=getKey('imgur');if(!cid)throw new Error('No Imgur Client-ID');const h={Authorization:`Client-ID ${cid}`};const url=q?`https://api.imgur.com/3/gallery/search/?q=${encodeURIComponent(q)}`:`https://api.imgur.com/3/gallery/hot/viral/${Math.max(0,page-1)}.json`;const data=await fetchJson(url,h);const list=(data?.data||[]).flatMap(e=>{if(e.images?.length)return e.images.filter(i=>i.type==='image/gif').map(i=>i.link);if(e.type==='image/gif'&&e.link)return[e.link];return[];});const s=q?(page-1)*limit:0;return{items:list.slice(s,s+limit).map((u,i)=>({name:'imgur',url:u,tags:[],animated:true,type:'gif',originalIndex:i})),total:list.length};}
+  function provOn(p){return p==='local'||p==='reddit'||!!S['prov'+p.charAt(0).toUpperCase()+p.slice(1)];}
+
+  // ═══════════════════════════════════════════════
+  //  GIF PAGE (FIXED)
+  // ═══════════════════════════════════════════════
+  function mkGifTile(item,parent){
+    const tile=document.createElement('div');tile.className='tl';
+    const img=mkImg(item.url,item.name);
+    if(S.gifShowTitles){const t=document.createElement('div');t.className='gt';t.textContent=item.name;tile.appendChild(t);}
+    if(S.showGifStar){
+      const star=document.createElement('button');star.className='star'+(isFav('gif',item)?' active':'');star.innerHTML='<i class="fa-solid fa-star"></i>';
+      star.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();favToggle('gif',item);showGifPage(currentGifPage);});
       tile.appendChild(star);
     }
-
-    img.addEventListener('click', () => {
-      insertBBCode(`[img=${getGifInsertSize()}]${item.url}[/img] `);
-      tile.style.opacity = '0.6'; setTimeout(()=> tile.style.opacity = '1', 200);
-    });
-    img.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      showCtxMenu([
-        { label: 'Copy URL', onClick: () => copyText(item.url) },
-        { label: 'Copy Name', onClick: () => copyText(item.name) }
-      ], e.clientX, e.clientY);
-    });
-
-    tile.appendChild(img);
-    gridGifs.appendChild(tile);
+    img.addEventListener('click',e=>{e.stopPropagation();insertContent(item);tile.style.opacity='.5';setTimeout(()=>tile.style.opacity='1',180);});
+    img.addEventListener('contextmenu',e=>{e.preventDefault();e.stopPropagation();showCtx([{icon:'fa-link',label:'Copy URL',onClick:()=>{copyText(item.url);notice('Copied!');}},{icon:'fa-star',label:isFav('gif',item)?'Unfavorite':'Favorite',onClick:()=>{favToggle('gif',item);showGifPage(currentGifPage);}}],e.clientX,e.clientY);});
+    tile.appendChild(img);parent.appendChild(tile);
   }
 
-  gifToolbar.addEventListener('click', (e) => {
-    const btn = e.target.closest('.provider-btn'); if (!btn) return;
-    const provider = btn.getAttribute('data-provider');
-    if (!providerEnabled(provider)) return;
-    if (provider === 'tenor' && !getApiKey('tenor')) { settingsTab.click(); alert('Add your Tenor API key in Settings → Import APIs.'); return; }
-    if (provider === 'giphy' && !getApiKey('giphy')) { settingsTab.click(); alert('Add your GIPHY API key in Settings → Import APIs.'); return; }
-    if (provider === 'imgur' && !getApiKey('imgur')) { settingsTab.click(); alert('Add your Imgur Client-ID in Settings → Import APIs.'); return; }
-    if (provider === 'tumblr' && !getApiKey('tumblr')) { settingsTab.click(); alert('Add your Tumblr API key in Settings → Import APIs.'); return; }
-    settings.gifProvider = provider; saveSettings(); showGifPage(1);
-  });
-  gifFavOnlyBtn.addEventListener('click', () => { favOnlyGifs = !favOnlyGifs; gifFavOnlyBtn.classList.toggle('active', favOnlyGifs); showGifPage(1); });
-  stickerFavOnlyBtn.addEventListener('click', () => { favOnlyStickers = !favOnlyStickers; stickerFavOnlyBtn.classList.toggle('active', favOnlyStickers); showStickerPage(1); });
-  emojiFavOnlyBtn.addEventListener('click', () => { favOnlyEmoji = !favOnlyEmoji; emojiFavOnlyBtn.classList.toggle('active', favOnlyEmoji); showEmojiLibraryPage(1); });
+  async function showGifPage(page){
+    if(_rendering)return;_rendering=true;
+    try{
+      activeTab='gifs';setTabUI('gifs');hideAll();
+      tbG.style.display='';sRow.style.display='';gG.style.display='';
+      tbG.querySelectorAll('.pb').forEach(b=>{b.style.display=provOn(b.dataset.p)?'':'none';b.classList.toggle('active',b.dataset.p===S.gifProvider);});
+      const pp=Math.max(1,S.gifPerPage||24);
+      gG.innerHTML='<div class="empty"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</div>';
 
-  searchInput.addEventListener('input', () => {
-    if (activeTab === 'emoji') showEmojiLibraryPage(1);
-    else if (activeTab === 'stickers') showStickerPage(1);
-    else if (activeTab === 'gifs') showGifPage(1);
-  });
-  pageJumpButton.addEventListener('click', () => {
-    let val = parseInt(pageJumpInput.value, 10); if (isNaN(val) || val < 1) val = 1;
-    if (activeTab === 'emoji') showEmojiLibraryPage(val);
-    else if (activeTab === 'stickers') showStickerPage(val);
-    else if (activeTab === 'gifs') showGifPage(val);
-  });
-  pageJumpInput.addEventListener('input', function () { this.value = this.value.replace(/[^0-9]/g, ''); });
-  pageJumpInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') pageJumpButton.click(); });
+      if(favOnlyGifs){
+        const q=searchIn.value.trim().toLowerCase();
+        let fvs=getFavList('gif');if(q)fvs=fvs.filter(x=>(x.name||'').toLowerCase().includes(q));
+        const{totalPages,page:p}=ensurePage(fvs.length,pp,page);currentGifPage=p;
+        gG.innerHTML='';const items=fvs.slice((p-1)*pp,p*pp);
+        if(!items.length)gG.innerHTML='<div class="empty"><i class="fa-solid fa-heart-crack"></i>&nbsp; No favorites</div>';
+        else items.forEach(i=>mkGifTile(i,gG));
+        renderPager(totalPages,currentGifPage,p=>showGifPage(p));
+        searchIn.placeholder='Search favorites…';$('#g-fav').classList.toggle('active',true);
+        return;
+      }
+      $('#g-fav').classList.toggle('active',false);
+      const q=searchIn.value.trim();
+      let items=[],totalPages=1;
 
-  function showSettings() {
-    activeTab = 'settings';
-    homeTab.classList.remove('active'); emojiTab.classList.remove('active'); stickerTab.classList.remove('active'); gifTab.classList.remove('active'); settingsTab.classList.add('active');
-    homePanel.style.display = 'none';
-    gridEmoji.style.display = 'none'; gridStickers.style.display = 'none'; gridGifs.style.display = 'none';
-    pagination.style.display = 'none'; pageJumpDiv.style.display = 'none'; searchBarDiv.style.display = 'none';
-    emojiToolbar.style.display = 'none'; stickerToolbar.style.display = 'none'; gifToolbar.style.display = 'none';
-    settingsPanel.style.display = 'block';
+      if(S.gifProvider==='local'){
+        if(!gifsLoaded)await loadLocalGifs();
+        if(!String(S.localGifUrls||'').trim()){gG.innerHTML='<div class="empty"><i class="fa-solid fa-folder-open"></i>&nbsp; Add GIF packs in Settings</div>';renderPager(1,1,()=>{});return;}
+        const term=q.toLowerCase();let list=term?allGifs.filter(e=>e.name.toLowerCase().includes(term)||(e.tags&&e.tags.some(t=>String(t).toLowerCase().includes(term)))):allGifs;
+        list=sortFavFirst(list,'gif');
+        const r=ensurePage(list.length,pp,page);totalPages=r.totalPages;currentGifPage=r.page;items=list.slice((r.page-1)*pp,r.page*pp);
+      } else if(S.gifProvider==='tenor'){
+        const{items:ti,hasNext}=await fetchTenorPage(q,page,pp);currentGifPage=page;items=ti;totalPages=page+(hasNext?1:0);
+      } else if(S.gifProvider==='giphy'){
+        const r=await fetchGiphy({q,page,limit:pp});currentGifPage=page;items=r.items;totalPages=Math.max(1,Math.ceil(r.total/pp));
+      } else if(S.gifProvider==='imgur'){
+        const r=await fetchImgur({q,page,limit:pp});currentGifPage=page;items=r.items;totalPages=Math.max(1,Math.ceil(r.total/pp));
+      } else if(S.gifProvider==='reddit'){
+        const r=await fetchReddit({q,page,limit:pp});currentGifPage=page;items=r.items;totalPages=Math.max(1,Math.ceil(r.total/pp));
+      } else if(S.gifProvider==='tumblr'){
+        const r=await fetchTumblr({q,page,limit:pp});currentGifPage=page;items=r.items;totalPages=Math.max(1,Math.ceil(r.total/pp));
+      }
+
+      gG.innerHTML='';
+      if(!items.length)gG.innerHTML='<div class="empty"><i class="fa-solid fa-ghost"></i>&nbsp; No results</div>';
+      else items.forEach(i=>mkGifTile(i,gG));
+      renderPager(totalPages,currentGifPage,p=>showGifPage(p));
+      searchIn.placeholder=`Search GIFs — ${S.gifProvider}`;
+    }catch(e){
+      gG.innerHTML=`<div class="empty"><i class="fa-solid fa-triangle-exclamation"></i>&nbsp; ${e.message}<br><span style="opacity:.5;font-size:10px">Check API keys in Settings</span></div>`;
+      renderPager(1,1,()=>{});
+    }finally{_rendering=false;}
   }
 
-  function refreshHomeStatus() {
-    try {
-      if (homeEmojiCount) homeEmojiCount.textContent = (allEmojis && allEmojis.length) ? String(allEmojis.length) : '0';
-      if (homeStickerCount) homeStickerCount.textContent = (allStickers && allStickers.length) ? String(allStickers.length) : (STICKERS_JSON_URLS.length ? (stickersLoaded ? '0' : 'loading…') : '0');
-      if (homeLocalGifsStatus) homeLocalGifsStatus.textContent = localGifStatus || (settings.localGifUrls ? 'loading…' : 'none');
-      if (homeProvTenor) homeProvTenor.textContent = getApiKey('tenor') ? 'key saved' : 'not set';
-      if (homeProvGiphy) homeProvGiphy.textContent = getApiKey('giphy') ? 'key saved' : 'not set';
-      if (homeProvImgur) homeProvImgur.textContent = getApiKey('imgur') ? 'client id saved' : 'not set';
-      if (homeProvTumblr) homeProvTumblr.textContent = getApiKey('tumblr') ? 'key saved' : 'not set';
-    } catch {}
-  }
-
-  function showHome() {
-    activeTab = 'home';
-    homeTab.classList.add('active'); emojiTab.classList.remove('active'); stickerTab.classList.remove('active'); gifTab.classList.remove('active'); settingsTab.classList.remove('active');
-    homePanel.style.display = 'block';
-    gridEmoji.style.display = 'none';
-    gridStickers.style.display = 'none';
-    gridGifs.style.display = 'none';
-    settingsPanel.style.display = 'none';
-    emojiToolbar.style.display = 'none';
-    stickerToolbar.style.display = 'none';
-    gifToolbar.style.display = 'none';
-    searchBarDiv.style.display = 'none';
-    pagination.style.display = 'none';
-    pageJumpDiv.style.display = 'none';
-    homeVersion.textContent = `v${VERSION}`;
-    refreshHomeStatus();
-  }
-
-  homeTab.addEventListener('click', showHome);
-  emojiTab.addEventListener('click', () => { showEmojiLibraryPage(currentEmojiPage); });
-  stickerTab.addEventListener('click', () => { showStickerPage(currentStickerPage); });
-  gifTab.addEventListener('click', () => { showGifPage(currentGifPage); });
-  settingsTab.addEventListener('click', showSettings);
-
-  homeUpdateBtn.addEventListener('click', () => { checkForUpdate(); });
-  homeDownloadBtn.addEventListener('click', () => { window.open('https://openuserjs.org/install/ZukoXZoku/Ultimate_Emojis.user.js','_blank'); });
-  let __homeUpdateHideT = null;
-  async function checkForUpdate() {
-    try {
-      homeUpdateStatus.style.display = 'inline';
-      homeUpdateStatus.className = 'status-badge badge-ok';
-      homeUpdateStatus.textContent = 'Checking…';
-      clearTimeout(__homeUpdateHideT);
-      const metaUrl = 'https://openuserjs.org/meta/ZukoXZoku/Ultimate_Emojis.meta.js';
-      const txt = await fetchText(metaUrl);
-      const m = txt.match(/@version\s+([^\r\n]+)/);
-      const remote = m ? (m[1] || '').trim() : '';
-      if (!remote) {
-        homeUpdateStatus.className = 'status-badge badge-err';
-        homeUpdateStatus.textContent = 'Failed to read version';
+  // ═══════════════════════════════════════════════
+  //  RECENT
+  // ═══════════════════════════════════════════════
+  function showRecent(){
+    activeTab='recent';setTabUI('recent');hideAll();hPanel.style.display='block';
+    hPanel.innerHTML=`<div class="section"><h3><i class="fa-solid fa-clock-rotate-left"></i> Recently Used</h3>`;
+    if(!recentItems.length){hPanel.innerHTML+='<div style="opacity:.6;padding:10px">Nothing here yet.</div></div>';return;}
+    const grid=document.createElement('div');grid.className='recent-grid';
+    recentItems.forEach(item=>{
+      if(item.isText||!item.url){
+        const span=document.createElement('div');span.className='ri';span.textContent=item.text||item.name||'?';
+        span.addEventListener('click',()=>insertContent(item));grid.appendChild(span);
       } else {
-        homeUpdateStatus.className = 'status-badge badge-ok';
-        homeUpdateStatus.textContent = `Latest: v${remote}`;
+        const img=document.createElement('img');img.src=item.url;img.alt=item.name||'';
+        img.addEventListener('click',()=>insertContent(item));grid.appendChild(img);
       }
-    } catch (e) {
-      homeUpdateStatus.className = 'status-badge badge-err';
-      homeUpdateStatus.textContent = 'Update check failed';
-    } finally {
-      clearTimeout(__homeUpdateHideT);
-      __homeUpdateHideT = setTimeout(() => { homeUpdateStatus.style.display = 'none'; }, 3000);
-    }
-  }
-
-  function initSettingsUI() {
-    const er = settingsPanel.querySelectorAll('input[name="emojiSize"]');
-    let me = false; er.forEach(r => { if (Number(r.value) === Number(settings.emojiSize)) { r.checked = true; me = true; } });
-    emojiSizeCustom.value = me ? '' : (settings.emojiSize || '');
-    const sr = settingsPanel.querySelectorAll('input[name="stickerSize"]');
-    let ms = false; sr.forEach(r => { if (Number(r.value) === Number(settings.stickerSize)) { r.checked = true; ms = true; } });
-    stickerSizeCustom.value = ms ? '' : (settings.stickerSize || '');
-
-    const gir = settingsPanel.querySelectorAll('input[name="gifInsertSize"]');
-    let giMatch = false;
-    gir.forEach(r => { if (Number(r.value) === Number(settings.gifInsertSize)) { r.checked = true; giMatch = true; } });
-    gifInsertSizeCustom.value = giMatch ? '' : (settings.gifInsertSize || '');
-
-    gifSizeRange.value = settings.gifSize; gifSizeVal.textContent = `${settings.gifSize}px`;
-    gifPerPageRange.value = settings.gifPerPage; gifPerPageVal.textContent = `${settings.gifPerPage}`;
-    gifMinColRange.value = settings.gifMinCol; gifMinColVal.textContent = `${settings.gifMinCol}px`;
-    showGifStarCb.checked = !!settings.showGifStar;
-    gifShowTitlesCb.checked = !!settings.gifShowTitles;
-    defaultGifProviderSel.value = settings.gifProvider || 'local';
-
-    menuWidthRange.value = settings.menuWidth; menuWidthVal.textContent = `${settings.menuWidth}px`;
-    menuHeightPxRange.value = settings.menuHeightPx; menuHeightPxVal.textContent = `${settings.menuHeightPx}px`;
-    menuMaxHeightVhRange.value = settings.menuMaxHeightVh; menuMaxHeightVhVal.textContent = `${settings.menuMaxHeightVh}vh`;
-    menuRadiusRange.value = settings.menuRadius; menuRadiusVal.textContent = `${settings.menuRadius}px`;
-    tileRadiusRange.value = settings.tileRadius; tileRadiusVal.textContent = `${settings.tileRadius}px`;
-    uiFontSizeRange.value = settings.uiFontSize; uiFontSizeVal.textContent = `${settings.uiFontSize}px`;
-    shadowRange.value = settings.shadow; shadowVal.textContent = settings.shadow.toFixed(2);
-    gapEmojiRange.value = settings.gapEmoji; gapEmojiVal.textContent = `${settings.gapEmoji}px`;
-    gapLargeRange.value = settings.gapLarge; gapLargeVal.textContent = `${settings.gapLarge}px`;
-
-    bgColorPicker.value = settings.bg; bgAlphaRange.value = settings.bgAlpha; bgAlphaVal.textContent = settings.bgAlpha.toFixed(2);
-    textColorPicker.value = settings.text; accentColorPicker.value = settings.accent;
-    borderColorPicker.value = settings.borderColor; borderWidthRange.value = settings.borderWidth; borderWidthVal.textContent = `${settings.borderWidth}px`;
-    fontFamilyInput.value = settings.fontFamily;
-
-    tileBgInput.value = settings.tileBg;
-    hoverScaleRange.value = settings.hoverScale; hoverScaleVal.textContent = settings.hoverScale.toFixed(2);
-    glowStrengthRange.value = settings.glowStrength; glowStrengthVal.textContent = `${settings.glowStrength}px`;
-
-    starColorPicker.value = settings.starColor;
-    starBgInput.value = settings.starBg;
-    starBorderPicker.value = settings.starBorder;
-    starSizeRange.value = settings.starSize; starSizeVal.textContent = `${settings.starSize}px`;
-    starSmSizeRange.value = settings.starSmSize; starSmSizeVal.textContent = `${settings.starSmSize}px`;
-    starTopRange.value = settings.starTop; starTopVal.textContent = `${settings.starTop}px`;
-    starRightRange.value = settings.starRight; starRightVal.textContent = `${settings.starRight}px`;
-    btnRadiusRange.value = settings.btnRadius; btnRadiusVal.textContent = `${settings.btnRadius}px`;
-    searchRadiusRange.value = settings.searchRadius; searchRadiusVal.textContent = `${settings.searchRadius}px`;
-    searchBorderPicker.value = settings.searchBorder;
-    backdropBlurRange.value = settings.backdropBlur; backdropBlurVal.textContent = `${settings.backdropBlur}px`;
-    zIndexInput.value = settings.zIndex;
-    paginationBgPicker.value = settings.paginationBg;
-    paginationActiveBgPicker.value = settings.paginationActiveBg;
-    paginationColorPicker.value = settings.paginationColor;
-
-    settingsPanel.querySelectorAll('input[name="apiScope"]').forEach(r => { r.checked = (r.value === (settings.apiScope || 'global')); });
-    redditSubsInput.value = settings.redditSubs || DEFAULTS.redditSubs;
-    redditIncludeImagesCb.checked = !!settings.redditIncludeImages;
-    swTenor.checked = !!settings.provTenor;
-    swGiphy.checked = !!settings.provGiphy;
-    swImgur.checked = !!settings.provImgur;
-    swTumblr.checked = !!settings.provTumblr;
-    localGifUrlsArea.value = settings.localGifUrls || '';
-    refreshApiUI();
-  }
-
-  settingsPanel.addEventListener('change', (e) => {
-    const t = e.target;
-    if (t.name === 'emojiSize') { settings.emojiSize = Number(t.value); emojiSizeCustom.value = ''; saveSettings(); applyCssVars(); if (activeTab === 'emoji') showEmojiLibraryPage(currentEmojiPage); }
-    if (t.name === 'stickerSize') { settings.stickerSize = Number(t.value); stickerSizeCustom.value = ''; saveSettings(); applyCssVars(); if (activeTab === 'stickers') showStickerPage(currentStickerPage); }
-    if (t.name === 'apiScope') { settings.apiScope = t.value; saveSettings(); refreshApiUI(); refreshHomeStatus(); }
-    if (t.name === 'gifInsertSize') { settings.gifInsertSize = Number(t.value); gifInsertSizeCustom.value = ''; saveSettings(); }
-  });
-  emojiSizeCustom.addEventListener('input', () => {
-    const val = Number(emojiSizeCustom.value);
-    if (!isNaN(val) && val >= 12 && val <= 256) { settings.emojiSize = val; saveSettings(); applyCssVars(); if (activeTab==='emoji') showEmojiLibraryPage(currentEmojiPage); settingsPanel.querySelectorAll('input[name="emojiSize"]').forEach(r => r.checked = false); }
-  });
-  stickerSizeCustom.addEventListener('input', () => {
-    const val = Number(stickerSizeCustom.value);
-    if (!isNaN(val) && val >= 64 && val <= 1024) { settings.stickerSize = val; saveSettings(); applyCssVars(); if (activeTab==='stickers') showStickerPage(currentStickerPage); settingsPanel.querySelectorAll('input[name="stickerSize"]').forEach(r => r.checked = false); }
-  });
-
-  gifInsertSizeCustom.addEventListener('input', () => {
-    const val = Number(gifInsertSizeCustom.value);
-    if (!isNaN(val) && val >= 50 && val <= 1024) {
-      settings.gifInsertSize = val;
-      saveSettings();
-      settingsPanel.querySelectorAll('input[name="gifInsertSize"]').forEach(r => r.checked = false);
-    }
-  });
-
-  gifSizeRange.addEventListener('input', () => {
-    settings.gifSize = Number(gifSizeRange.value);
-    gifSizeVal.textContent = `${settings.gifSize}px`;
-    saveSettings();
-    applyCssVars();
-    if (activeTab === 'gifs') showGifPage(currentGifPage);
-    if (activeTab === 'stickers') showStickerPage(currentStickerPage);
-  });
-  gifPerPageRange.addEventListener('input', () => {
-    settings.gifPerPage = Number(gifPerPageRange.value);
-    gifPerPageVal.textContent = `${settings.gifPerPage}`;
-    saveSettings();
-    if (activeTab === 'gifs') showGifPage(1);
-  });
-  gifMinColRange.addEventListener('input', () => {
-    settings.gifMinCol = Number(gifMinColRange.value);
-    gifMinColVal.textContent = `${settings.gifMinCol}px`;
-    saveSettings(); applyCssVars();
-    if (activeTab === 'gifs') showGifPage(currentGifPage);
-  });
-  showGifStarCb.addEventListener('change', () => {
-    settings.showGifStar = !!showGifStarCb.checked;
-    saveSettings();
-    if (activeTab === 'gifs') showGifPage(currentGifPage);
-  });
-  gifShowTitlesCb.addEventListener('change', () => {
-    settings.gifShowTitles = !!gifShowTitlesCb.checked;
-    saveSettings();
-    if (activeTab === 'gifs') showGifPage(currentGifPage);
-  });
-  defaultGifProviderSel.addEventListener('change', () => {
-    settings.gifProvider = defaultGifProviderSel.value;
-    saveSettings();
-    updateProviderButtons();
-    if (activeTab === 'gifs') showGifPage(1);
-  });
-
-  menuWidthRange.addEventListener('input', () => { settings.menuWidth = Number(menuWidthRange.value); menuWidthVal.textContent = `${settings.menuWidth}px`; saveSettings(); applyCssVars(); CURRENT_CSS_BASE = cssBase; });
-  menuHeightPxRange.addEventListener('input', () => { settings.menuHeightPx = Number(menuHeightPxRange.value); menuHeightPxVal.textContent = `${settings.menuHeightPx}px`; saveSettings(); applyCssVars(); });
-  menuMaxHeightVhRange.addEventListener('input', () => { settings.menuMaxHeightVh = Number(menuMaxHeightVhRange.value); menuMaxHeightVhVal.textContent = `${settings.menuMaxHeightVh}vh`; saveSettings(); applyCssVars(); });
-  menuRadiusRange.addEventListener('input', () => { settings.menuRadius = Number(menuRadiusRange.value); menuRadiusVal.textContent = `${settings.menuRadius}px`; saveSettings(); applyCssVars(); });
-  tileRadiusRange.addEventListener('input', () => { settings.tileRadius = Number(tileRadiusRange.value); tileRadiusVal.textContent = `${settings.tileRadius}px`; saveSettings(); applyCssVars(); });
-  uiFontSizeRange.addEventListener('input', () => { settings.uiFontSize = Number(uiFontSizeRange.value); uiFontSizeVal.textContent = `${settings.uiFontSize}px`; saveSettings(); applyCssVars(); });
-  shadowRange.addEventListener('input', () => { settings.shadow = Number(shadowRange.value); shadowVal.textContent = settings.shadow.toFixed(2); saveSettings(); applyCssVars(); });
-  gapEmojiRange.addEventListener('input', () => { settings.gapEmoji = Number(gapEmojiRange.value); gapEmojiVal.textContent = `${settings.gapEmoji}px`; saveSettings(); applyCssVars(); if (activeTab==='emoji') showEmojiLibraryPage(currentEmojiPage); });
-  gapLargeRange.addEventListener('input', () => { settings.gapLarge = Number(gapLargeRange.value); gapLargeVal.textContent = `${settings.gapLarge}px`; saveSettings(); applyCssVars(); if (activeTab==='stickers') showStickerPage(currentStickerPage); if (activeTab==='gifs') showGifPage(currentGifPage); });
-
-  bgColorPicker.addEventListener('input', () => { settings.bg = bgColorPicker.value; saveSettings(); applyCssVars(); });
-  bgAlphaRange.addEventListener('input', () => { settings.bgAlpha = Number(bgAlphaRange.value); bgAlphaVal.textContent = settings.bgAlpha.toFixed(2); saveSettings(); applyCssVars(); });
-  textColorPicker.addEventListener('input', () => { settings.text = textColorPicker.value; saveSettings(); applyCssVars(); });
-  accentColorPicker.addEventListener('input', () => { settings.accent = accentColorPicker.value; saveSettings(); applyCssVars(); });
-  borderColorPicker.addEventListener('input', () => { settings.borderColor = borderColorPicker.value; saveSettings(); applyCssVars(); });
-  borderWidthRange.addEventListener('input', () => { settings.borderWidth = Number(borderWidthRange.value); borderWidthVal.textContent = `${settings.borderWidth}px`; saveSettings(); applyCssVars(); });
-  fontFamilyInput.addEventListener('change', () => { const v = fontFamilyInput.value.trim(); if (v) { settings.fontFamily = v; saveSettings(); applyCssVars(); } });
-
-  tileBgInput.addEventListener('input', () => { settings.tileBg = tileBgInput.value; saveSettings(); applyCssVars(); });
-  hoverScaleRange.addEventListener('input', () => { settings.hoverScale = Number(hoverScaleRange.value); hoverScaleVal.textContent = settings.hoverScale.toFixed(2); saveSettings(); applyCssVars(); });
-  glowStrengthRange.addEventListener('input', () => { settings.glowStrength = Number(glowStrengthRange.value); glowStrengthVal.textContent = `${settings.glowStrength}px`; saveSettings(); applyCssVars(); });
-
-  starColorPicker.addEventListener('input', () => { settings.starColor = starColorPicker.value; saveSettings(); applyCssVars(); });
-  starBgInput.addEventListener('input', () => { settings.starBg = starBgInput.value || 'rgba(0,0,0,.35)'; saveSettings(); applyCssVars(); });
-  starBorderPicker.addEventListener('input', () => { settings.starBorder = starBorderPicker.value; saveSettings(); applyCssVars(); });
-  starSizeRange.addEventListener('input', () => { settings.starSize = Number(starSizeRange.value); starSizeVal.textContent = `${settings.starSize}px`; saveSettings(); applyCssVars(); });
-  starSmSizeRange.addEventListener('input', () => { settings.starSmSize = Number(starSmSizeRange.value); starSmSizeVal.textContent = `${settings.starSmSize}px`; saveSettings(); applyCssVars(); });
-  starTopRange.addEventListener('input', () => { settings.starTop = Number(starTopRange.value); starTopVal.textContent = `${settings.starTop}px`; saveSettings(); applyCssVars(); });
-  starRightRange.addEventListener('input', () => { settings.starRight = Number(starRightRange.value); starRightVal.textContent = `${settings.starRight}px`; saveSettings(); applyCssVars(); });
-
-  btnRadiusRange.addEventListener('input', () => { settings.btnRadius = Number(btnRadiusRange.value); btnRadiusVal.textContent = `${settings.btnRadius}px`; saveSettings(); applyCssVars(); });
-  searchRadiusRange.addEventListener('input', () => { settings.searchRadius = Number(searchRadiusRange.value); searchRadiusVal.textContent = `${settings.searchRadius}px`; saveSettings(); applyCssVars(); });
-  searchBorderPicker.addEventListener('input', () => { settings.searchBorder = searchBorderPicker.value; saveSettings(); applyCssVars(); });
-  backdropBlurRange.addEventListener('input', () => { settings.backdropBlur = Number(backdropBlurRange.value); backdropBlurVal.textContent = `${settings.backdropBlur}px`; saveSettings(); applyCssVars(); });
-  zIndexInput.addEventListener('change', () => { settings.zIndex = Number(zIndexInput.value) || DEFAULTS.zIndex; saveSettings(); applyCssVars(); });
-
-  paginationBgPicker.addEventListener('input', () => { settings.paginationBg = paginationBgPicker.value; saveSettings(); applyCssVars(); });
-  paginationActiveBgPicker.addEventListener('input', () => { settings.paginationActiveBg = paginationActiveBgPicker.value; saveSettings(); applyCssVars(); });
-  paginationColorPicker.addEventListener('input', () => { settings.paginationColor = paginationColorPicker.value; saveSettings(); applyCssVars(); });
-
-  loadDefaultCssBtn.addEventListener('click', () => {
-    customCssArea.value = CURRENT_CSS_BASE || cssBase;
-  });
-  applyCustomCssBtn.addEventListener('click', () => { applyCustomCss(customCssArea.value || ''); });
-  exportCustomCssBtn.addEventListener('click', async () => { await copyText(customCssArea.value || ''); exportCustomCssBtn.textContent = 'Copied!'; setTimeout(() => exportCustomCssBtn.textContent = 'Export CSS', 900); });
-  clearCustomCssBtn.addEventListener('click', () => { customCssArea.value = ''; applyCustomCss(''); });
-
-  const STYLE_KEYS = Object.keys(DEFAULTS);
-  exportStyleBtn.addEventListener('click', async () => {
-    const data = {}; STYLE_KEYS.forEach(k => data[k] = settings[k]);
-    data.customCss = GM_GetValueSafe(CUSTOM_CSS_KEY, '');
-    const txt = JSON.stringify(data, null, 2);
-    styleJsonArea.value = txt;
-    await copyText(txt);
-    exportStyleBtn.textContent = 'Copied!'; setTimeout(()=>exportStyleBtn.textContent='Copy style JSON', 900);
-  });
-  resetStyleBtn.addEventListener('click', () => {
-    Object.assign(settings, DEFAULTS);
-    saveSettings(); applyCssVars(); initSettingsUI();
-    showAfterReset(); refreshHomeStatus();
-  });
-  importStyleBtn.addEventListener('click', () => {
-    importSummary.textContent = '';
-    let obj = null;
-    try { obj = JSON.parse(styleJsonArea.value); } catch (e) { alert('Invalid JSON'); return; }
-    if (!obj || typeof obj !== 'object') { alert('Invalid JSON'); return; }
-    let applied = 0, ignored = 0;
-    STYLE_KEYS.forEach(k => { if (k in obj) { settings[k] = obj[k]; applied++; } });
-    Object.keys(obj).forEach(k => { if (!STYLE_KEYS.includes(k) && k !== 'customCss') ignored++; });
-    saveSettings(); applyCssVars(); initSettingsUI();
-    if ('customCss' in obj) { applyCustomCss(String(obj.customCss || '')); }
-    importSummary.textContent = `Applied ${applied} keys${ignored ? `, ignored ${ignored}` : ''}.`;
-    showAfterReset(); refreshHomeStatus();
-  });
-  function showAfterReset() {
-    if (activeTab === 'emoji') showEmojiLibraryPage(currentEmojiPage);
-    if (activeTab === 'stickers') showStickerPage(currentStickerPage);
-    if (activeTab === 'gifs') showGifPage(currentGifPage);
-    if (activeTab === 'home') showHome();
-  }
-
-  resetAllBtn.addEventListener('click', () => {
-    if (!confirm('Reset appearance to defaults?')) return;
-    Object.assign(settings, DEFAULTS);
-    saveSettings(); applyCssVars(); initSettingsUI(); showAfterReset(); refreshHomeStatus();
-    alert('Appearance reset to defaults.');
-  });
-  resetAllDataBtn.addEventListener('click', () => {
-    if (!confirm('Reset EVERYTHING?\nThis will clear appearance, favorites, API keys, custom CSS and caches.')) return;
-    Object.assign(settings, DEFAULTS); saveSettings(); applyCssVars();
-    favEmojiV2.clear(); favStickerV2.clear(); favGifV2.clear();
-    favEmojiLegacy.clear(); favStickerLegacy.clear(); favGifLegacy.clear();
-    favMeta = {};
-    saveFavV2(FAV_KEYS.emojiV2, favEmojiV2);
-    saveFavV2(FAV_KEYS.stickerV2, favStickerV2);
-    saveFavV2(FAV_KEYS.gifV2, favGifV2);
-    saveFavLegacy(FAV_KEYS.emojiLegacy, favEmojiLegacy);
-    saveFavLegacy(FAV_KEYS.stickerLegacy, favStickerLegacy);
-    saveFavLegacy(FAV_KEYS.gifLegacy, favGifLegacy);
-    saveFavMeta();
-    writeApiStore('global', {});
-    writeApiStore('site', {});
-    applyCustomCss(''); customCssArea.value = '';
-    initSettingsUI(); showAfterReset(); refreshHomeStatus();
-    alert('All data has been reset.');
-  });
-
-  function setStatus(el, ok, msg) { el.textContent = msg || (ok ? 'OK' : 'Error'); el.className = 'status-badge ' + (ok ? 'badge-ok' : 'badge-err'); }
-  function refreshApiUI() {
-    const t = getApiKey('tenor'); const g = getApiKey('giphy'); const i = getApiKey('imgur'); const u = getApiKey('tumblr');
-    tenorKeyInput.value = t; giphyKeyInput.value = g; imgurKeyInput.value = i; tumblrKeyInput.value = u;
-    setStatus(document.getElementById('st-tenor'), !!t, t ? 'Saved' : 'Not set');
-    setStatus(document.getElementById('st-giphy'), !!g, g ? 'Saved' : 'Not set');
-    setStatus(document.getElementById('st-imgur'), !!i, i ? 'Saved' : 'Not set');
-    setStatus(document.getElementById('st-tumblr'), !!u, u ? 'Saved' : 'Not set');
-  }
-  saveTenorBtn.addEventListener('click', () => { setApiKey('tenor', tenorKeyInput.value.trim()); refreshApiUI(); refreshHomeStatus(); });
-  saveGiphyBtn.addEventListener('click', () => { setApiKey('giphy', giphyKeyInput.value.trim()); refreshApiUI(); refreshHomeStatus(); });
-  saveImgurBtn.addEventListener('click', () => { setApiKey('imgur', imgurKeyInput.value.trim()); refreshApiUI(); refreshHomeStatus(); });
-  saveTumblrBtn.addEventListener('click', () => { setApiKey('tumblr', tumblrKeyInput.value.trim()); refreshApiUI(); refreshHomeStatus(); });
-
-  function attachShow(btn, input) { btn.addEventListener('click', () => { input.type = input.type === 'password' ? 'text' : 'password'; btn.textContent = input.type === 'password' ? 'Show' : 'Hide'; }); }
-  attachShow(showTenorBtn, tenorKeyInput);
-  attachShow(showGiphyBtn, giphyKeyInput);
-  attachShow(showImgurBtn, imgurKeyInput);
-  attachShow(showTumblrBtn, tumblrKeyInput);
-
-  testTenorBtn.addEventListener('click', async () => {
-    const el = document.getElementById('st-tenor');
-    setStatus(el, true, 'Testing...');
-    testTenorBtn.disabled = true;
-    try {
-      const key = tenorKeyInput.value.trim() || getApiKey('tenor'); if (!key) throw new Error('No Tenor key.');
-      const r = await fetchJson(`https://tenor.googleapis.com/v2/featured?key=${encodeURIComponent(key)}&limit=1&media_filter=gif`);
-      setStatus(el, !!r?.results, r?.results ? 'OK' : 'Failed');
-    } catch(e){ setStatus(el, false, 'Failed'); } finally { testTenorBtn.disabled = false; }
-  });
-  testGiphyBtn.addEventListener('click', async () => {
-    const el = document.getElementById('st-giphy');
-    setStatus(el, true, 'Testing...');
-    testGiphyBtn.disabled = true;
-    try {
-      const key = giphyKeyInput.value.trim() || getApiKey('giphy'); if (!key) throw new Error('No GIPHY key.');
-      const r = await fetchJson(`https://api.giphy.com/v1/gifs/trending?api_key=${encodeURIComponent(key)}&limit=1`);
-      setStatus(el, !!r?.data, r?.data ? 'OK' : 'Failed');
-    } catch(e){ setStatus(el, false, 'Failed'); } finally { testGiphyBtn.disabled = false; }
-  });
-  testImgurBtn.addEventListener('click', async () => {
-    const el = document.getElementById('st-imgur');
-    setStatus(el, true, 'Testing...');
-    testImgurBtn.disabled = true;
-    try {
-      const id = imgurKeyInput.value.trim() || getApiKey('imgur'); if (!id) throw new Error('No Imgur Client-ID.');
-      const r = await fetchJson(`https://api.imgur.com/3/credits`, { 'Authorization': `Client-ID ${id}` });
-      setStatus(el, !!r?.data, r?.data ? 'OK' : 'Failed');
-    } catch(e){ setStatus(el, false, 'Failed'); } finally { testImgurBtn.disabled = false; }
-  });
-  testTumblrBtn.addEventListener('click', async () => {
-    const el = document.getElementById('st-tumblr');
-    setStatus(el, true, 'Testing...');
-    testTumblrBtn.disabled = true;
-    try {
-      const key = tumblrKeyInput.value.trim() || getApiKey('tumblr'); if (!key) throw new Error('No Tumblr key.');
-      const r = await fetchJson(`https://api.tumblr.com/v2/tagged?tag=gif&api_key=${encodeURIComponent(key)}&limit=1`);
-      setStatus(el, !!r?.response, r?.response ? 'OK' : 'Failed');
-    } catch(e){ setStatus(el, false, 'Failed'); } finally { testTumblrBtn.disabled = false; }
-  });
-
-  saveRedditSubsBtn.addEventListener('click', () => {
-    const raw = redditSubsInput.value || '';
-    settings.redditSubs = raw;
-    saveSettings();
-    saveRedditSubsBtn.textContent = 'Saved';
-    setTimeout(()=> saveRedditSubsBtn.textContent = 'Save', 900);
-    if (activeTab === 'gifs' && settings.gifProvider === 'reddit') showGifPage(1);
-  });
-  redditIncludeImagesCb.addEventListener('change', () => {
-    settings.redditIncludeImages = !!redditIncludeImagesCb.checked;
-    saveSettings();
-    if (activeTab === 'gifs' && settings.gifProvider === 'reddit') showGifPage(1);
-  });
-
-  swTenor.addEventListener('change', () => { settings.provTenor = !!swTenor.checked; saveSettings(); updateProviderButtons(); if (activeTab==='gifs') showGifPage(1); });
-  swGiphy.addEventListener('change', () => { settings.provGiphy = !!swGiphy.checked; saveSettings(); updateProviderButtons(); if (activeTab==='gifs') showGifPage(1); });
-  swImgur.addEventListener('change', () => { settings.provImgur = !!swImgur.checked; saveSettings(); updateProviderButtons(); if (activeTab==='gifs') showGifPage(1); });
-  swTumblr.addEventListener('change', () => { settings.provTumblr = !!swTumblr.checked; saveSettings(); updateProviderButtons(); if (activeTab==='gifs') showGifPage(1); });
-
-  saveLocalGifsBtn.addEventListener('click', async () => {
-    settings.localGifUrls = localGifUrlsArea.value.trim();
-    saveSettings();
-    stLocalGifs.textContent = 'Saved';
-    gifsLoaded = false;
-    localGifStatus = '';
-    await loadLocalGifs();
-    stLocalGifs.textContent = localGifStatus;
-    if (activeTab === 'gifs' && settings.gifProvider === 'local') showGifPage(1);
-  });
-  reloadLocalGifsBtn.addEventListener('click', async () => {
-    stLocalGifs.textContent = 'Reloading…';
-    gifsLoaded = false;
-    await loadLocalGifs();
-    stLocalGifs.textContent = localGifStatus;
-    if (activeTab === 'gifs' && settings.gifProvider === 'local') showGifPage(1);
-  });
-
-  toggleChangelogBtn.addEventListener('click', () => {
-    const el = document.getElementById('uni-changelog');
-    const vis = window.getComputedStyle(el).display !== 'none';
-    el.style.display = vis ? 'none' : 'block';
-  });
-
-  const emojisButtonEmojis = [
-    '😀'];
-  let emojiButton = document.getElementById('global-emoji-button');
-  if (!emojiButton) {
-    emojiButton = document.createElement('span');
-    emojiButton.id = 'global-emoji-button';
-    emojiButton.className = 'emoji-button';
-    emojiButton.innerHTML = '😀';
-    emojiButton.setAttribute('role', 'button');
-    emojiButton.setAttribute('aria-label', 'Insert emoji');
-    emojiButton.tabIndex = 0;
-    document.body.appendChild(emojiButton);
-  }
-  const textareaSelector = 'textarea:not([type="search"]):not([role="searchbox"])';
-  function getActiveTextarea() { const el = document.activeElement; if (el && el.matches && el.matches(textareaSelector)) return el; return document.querySelector(textareaSelector); }
-  emojiButton.onmouseenter = () => { const r = emojisButtonEmojis[Math.floor(Math.random() * emojisButtonEmojis.length)]; emojiButton.innerHTML = r; emojiButton.style.filter = 'grayscale(0%)'; emojiButton.style.transform = 'scale(1.1)'; };
-  emojiButton.onmouseleave = () => { emojiButton.style.filter = 'grayscale(80%)'; emojiButton.style.transform = 'scale(1)'; };
-  emojiButton.onclick = (e) => {
-    e.stopPropagation();
-    const input = getActiveTextarea(); if (!input) return;
-    const menu = document.getElementById('uni-emoji-menu');
-    if (menu) {
-      const isHidden = window.getComputedStyle(menu).display === 'none';
-      menu.style.display = isHidden ? 'flex' : 'none';
-      if (isHidden) showEmojiLibraryPage(currentEmojiPage);
-    }
-  };
-  emojiButton.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); emojiButton.click(); } };
-
-  (function addGlobalDismissHandlers() {
-    const FLAG = '__emojiHandlersAdded__'; if (window[FLAG]) return; window[FLAG] = true;
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { const menu = document.getElementById('uni-emoji-menu'); if (menu) menu.style.display = 'none'; hideCtxMenu(); } });
-  })();
-
-  container.querySelectorAll('.exitbtn').forEach(button => {
-    button.addEventListener('click', function () {
-      const menu = document.getElementById('uni-emoji-menu'); if (menu) menu.style.display = 'none';
     });
-  });
+    hPanel.querySelector('.section').appendChild(grid);
+    const cb=document.createElement('button');cb.className='btn warn';cb.innerHTML='<i class="fa-solid fa-trash"></i> Clear';cb.style.marginTop='6px';
+    cb.addEventListener('click',()=>{if(!confirm('Clear recent?'))return;recentItems=[];GM_Set(K.recent,'[]');showRecent();});
+    hPanel.querySelector('.section').appendChild(cb);
+  }
 
-  document.addEventListener('keydown', (e) => {
-    const isWinLinCombo = e.ctrlKey && e.altKey && !e.metaKey && e.key.toLowerCase() === 'e';
-    const isMacCombo = e.metaKey && e.altKey && !e.ctrlKey && e.key.toLowerCase() === 'e';
-    if (isWinLinCombo || isMacCombo) {
-      const menu = document.getElementById('uni-emoji-menu'); if (menu) {
-        const isHidden = window.getComputedStyle(menu).display === 'none';
-        menu.style.display = isHidden ? 'flex' : 'none';
-        if (isHidden) showEmojiLibraryPage(currentEmojiPage);
+  // ═══════════════════════════════════════════════
+  //  HOME
+  // ═══════════════════════════════════════════════
+  async function showHome(){
+    activeTab='home';setTabUI('home');hideAll();hPanel.style.display='block';
+    const pk=p=>hasKey(p)?'<span class="badge-ok"><i class="fa-solid fa-circle-check"></i> saved</span>':'<span class="badge-err"><i class="fa-solid fa-circle-xmark"></i> not set</span>';
+    hPanel.innerHTML=`
+<div class="section"><h3><i class="fa-solid fa-chart-line"></i> Live Stats</h3>
+<div class="home-grid">
+<div class="home-card"><h4><i class="fa-solid fa-download"></i> Installs</h4><div id="h-inst"><i class="fa-solid fa-spinner fa-spin"></i></div></div>
+<div class="home-card"><h4><i class="fa-solid fa-code-branch"></i> Version</h4><div>Local: <b>v${VERSION}</b></div><div id="h-rem">Remote: <i class="fa-solid fa-spinner fa-spin"></i></div></div>
+<div class="home-card"><h4><i class="fa-solid fa-calendar-check"></i> Updated</h4><div id="h-upd"><i class="fa-solid fa-spinner fa-spin"></i></div></div>
+</div>
+<div class="row" style="margin-top:8px">
+<a class="link-btn" href="${LINKS.github}" target="_blank"><i class="fa-brands fa-github"></i> GitHub</a>
+<a class="link-btn" href="${LINKS.openuserjs}" target="_blank"><i class="fa-solid fa-globe"></i> OpenUserJS</a>
+<a class="link-btn" href="${LINKS.download}" target="_blank"><i class="fa-solid fa-download"></i> Download</a>
+<button class="btn sec" id="h-ref"><i class="fa-solid fa-arrows-rotate"></i> Refresh</button>
+</div></div>
+<div class="section"><h3><i class="fa-solid fa-cubes"></i> Content</h3>
+<div class="home-grid">
+<div class="home-card"><h4><i class="fa-solid fa-face-smile"></i> Emojis</h4>
+<div class="chip">Custom: ${allEmojis.length}</div>
+<div class="chip">Fav: ${_favV2.emoji.size}</div>
+</div>
+<div class="home-card"><h4><i class="fa-solid fa-note-sticky"></i> Other</h4>
+<div class="chip">Stickers: ${stickersLoaded?allStickers.length:'…'}</div>
+<div class="chip">Local GIFs: ${localGifStatus||'–'}</div>
+<div class="chip">Recent: ${recentItems.length}</div>
+</div>
+<div class="home-card"><h4><i class="fa-solid fa-plug"></i> Providers</h4>
+<div>Tenor: ${pk('tenor')}</div><div>GIPHY: ${pk('giphy')}</div><div>Imgur: ${pk('imgur')}</div><div>Tumblr: ${pk('tumblr')}</div>
+</div></div></div>`;
+
+    hPanel.querySelector('#h-ref')?.addEventListener('click',async()=>{GM_Set(K.statsCacheTs,'0');showHome();});
+
+    // Fetch stats
+    try{
+      const ts=Number(GM_Get(K.statsCacheTs,'0'));
+      let stats;
+      if(Date.now()-ts<STATS_TTL){try{stats=JSON.parse(GM_Get(K.statsCache,'null'));}catch{}}
+      if(!stats){
+        try{
+          const txt=await fetchText(LINKS.openuserjs);
+          const installs=txt.match(/Installs[:\s]*<[^>]*>(\d[\d,]*)/i)?.[1]?.replace(/,/g,'')||null;
+          const updated=txt.match(/Updated[:\s]*<[^>]*>([^<]+)/i)?.[1]?.trim()||null;
+          let rv=null;try{const mt=await fetchText(LINKS.meta);rv=mt.match(/@version\s+([^\r\n]+)/)?.[1]?.trim();}catch{}
+          stats={installs:installs||'?',updated:updated||'?',remoteVersion:rv||'?'};
+          GM_Set(K.statsCache,JSON.stringify(stats));GM_Set(K.statsCacheTs,String(Date.now()));
+        }catch{stats={installs:'?',updated:'?',remoteVersion:'?'};}
       }
-      e.preventDefault();
-    }
+      const hi=hPanel.querySelector('#h-inst'),hr=hPanel.querySelector('#h-rem'),hu=hPanel.querySelector('#h-upd');
+      if(hi)hi.innerHTML=`<span class="stat-num">${stats.installs}</span> installs`;
+      if(hr){const isNew=stats.remoteVersion&&stats.remoteVersion!=='?'&&stats.remoteVersion!==VERSION;hr.innerHTML=`Remote: <b>v${stats.remoteVersion}</b> ${isNew?'<span class="badge-warn"><i class="fa-solid fa-arrow-up"></i> Update!</span>':'<span class="badge-ok"><i class="fa-solid fa-check"></i></span>'}`;}
+      if(hu)hu.innerHTML=`<i class="fa-solid fa-clock"></i> ${stats.updated}`;
+    }catch{}
+  }
+
+  // ═══════════════════════════════════════════════
+  //  SETTINGS (EXPANDED)
+  // ═══════════════════════════════════════════════
+  function showSettings(){
+    activeTab='settings';setTabUI('settings');hideAll();sPanel.style.display='block';
+    sPanel.innerHTML=`
+<div class="section"><h3><i class="fa-solid fa-sliders"></i> General</h3>
+<div class="row"><label class="cb"><input type="checkbox" id="x-close" ${S.closeOnInsert?'checked':''}> Close on insert</label></div>
+<div class="row"><label class="cb"><input type="checkbox" id="x-compact" ${S.compactMode?'checked':''}> Compact mode</label></div>
+<div class="row"><label class="cb"><input type="checkbox" id="x-tips" ${S.showTooltips?'checked':''}> Tooltips</label></div>
+<div class="row"><label class="cb"><input type="checkbox" id="x-gstar" ${S.showGifStar?'checked':''}> GIF star</label></div>
+<div class="row"><label class="cb"><input type="checkbox" id="x-gtitles" ${S.gifShowTitles?'checked':''}> GIF titles</label></div>
+</div>
+
+<div class="section"><h3><i class="fa-solid fa-palette"></i> Appearance</h3>
+<div style="opacity:.6;font-size:10px;margin-bottom:6px">Customize the look and feel of the menu.</div>
+
+<h4 style="margin:6px 0 4px;color:var(--acc)"><i class="fa-solid fa-gem"></i> Menu</h4>
+<div class="row"><label style="min-width:100px">Width</label><input type="number" class="mini" id="s-mw" value="${S.menuWidth}"> px</div>
+<div class="row"><label style="min-width:100px">Height</label><input type="number" class="mini" id="s-mh" value="${S.menuHeightPx}"> px</div>
+<div class="row"><label style="min-width:100px">Border Radius</label><input type="number" class="mini" id="s-mr" value="${S.menuRadius}"> px</div>
+<div class="row"><label style="min-width:100px">Border Width</label><input type="number" class="mini" id="s-bw" value="${S.borderWidth}"> px</div>
+<div class="row"><label style="min-width:100px">Shadow</label><input type="range" min="0" max="1" step="0.1" id="s-sh" value="${S.shadow}"><span class="rv">${S.shadow}</span></div>
+<div class="row"><label style="min-width:100px">Backdrop Blur</label><input type="number" class="mini" id="s-blur" value="${S.backdropBlur}"> px</div>
+
+<h4 style="margin:8px 0 4px;color:var(--acc)"><i class="fa-solid fa-droplet"></i> Colors</h4>
+<div class="row"><label style="min-width:100px">Background</label><input type="color" id="s-bg" value="${S.bg}"></div>
+<div class="row"><label style="min-width:100px">Text</label><input type="color" id="s-txt" value="${S.text}"></div>
+<div class="row"><label style="min-width:100px">Accent</label><input type="color" id="s-acc" value="${S.accent}"></div>
+<div class="row"><label style="min-width:100px">Border</label><input type="color" id="s-bc" value="${S.borderColor}"></div>
+<div class="row"><label style="min-width:100px">Tile BG</label><input type="color" id="s-tbg" value="${S.tileBg}"></div>
+
+<h4 style="margin:8px 0 4px;color:var(--acc)"><i class="fa-solid fa-grip"></i> Grid & Tiles</h4>
+<div class="row"><label style="min-width:100px">Emoji Size</label><input type="number" class="mini" id="s-es" value="${S.emojiSize}"> px</div>
+<div class="row"><label style="min-width:100px">GIF Height</label><input type="number" class="mini" id="s-gs" value="${S.gifSize}"> px</div>
+<div class="row"><label style="min-width:100px">Emoji Gap</label><input type="number" class="mini" id="s-ge" value="${S.gapEmoji}"> px</div>
+<div class="row"><label style="min-width:100px">GIF Gap</label><input type="number" class="mini" id="s-gl" value="${S.gapLarge}"> px</div>
+<div class="row"><label style="min-width:100px">Tile Radius</label><input type="number" class="mini" id="s-tr" value="${S.tileRadius}"> px</div>
+<div class="row"><label style="min-width:100px">Hover Scale</label><input type="range" min="1" max="1.2" step="0.01" id="s-hs" value="${S.hoverScale}"><span class="rv">${S.hoverScale}</span></div>
+
+<h4 style="margin:8px 0 4px;color:var(--acc)"><i class="fa-solid fa-grip-lines-vertical"></i> Scrollbar</h4>
+<div class="row"><label style="min-width:100px">Width</label><input type="number" class="mini" id="s-sbw" value="${S.scrollbarWidth}"> px</div>
+<div class="row"><label style="min-width:100px">Thumb Color</label><input type="color" id="s-sbth" value="${S.scrollbarThumb}"></div>
+<div class="row"><label style="min-width:100px">Track Color</label><input type="color" id="s-sbt" value="${S.scrollbarTrack}"></div>
+
+<div class="row" style="margin-top:10px"><button class="btn" id="s-apply"><i class="fa-solid fa-check"></i> Apply Changes</button></div>
+</div>
+
+<div class="section"><h3><i class="fa-solid fa-code"></i> Insert Format</h3>
+<div class="row"><label style="min-width:100px">Format</label><select class="sel" id="s-fmt">
+<option value="bbcode" ${S.insertFormat==='bbcode'?'selected':''}>BBCode</option>
+<option value="markdown" ${S.insertFormat==='markdown'?'selected':''}>Markdown</option>
+<option value="html" ${S.insertFormat==='html'?'selected':''}>HTML</option>
+<option value="url" ${S.insertFormat==='url'?'selected':''}>URL Only</option>
+</select></div>
+</div>
+
+<div class="section"><h3><i class="fa-solid fa-key"></i> API Keys</h3>
+<div style="opacity:.6;font-size:10px;margin-bottom:6px">Stored locally only</div>
+ ${['tenor','giphy','imgur','tumblr'].map(p=>`<div class="row"><label style="min-width:80px">${p}</label><span class="api-disp ${hasKey(p)?'has':''}">${hasKey(p)?maskK(getKey(p)):'Not set'}</span>
+<button class="btn sec" data-ed="${p}"><i class="fa-solid fa-pen"></i></button>
+<button class="btn" data-ts="${p}"><i class="fa-solid fa-vial"></i></button>
+<span class="badge" id="st-${p}">${hasKey(p)?'OK':''}</span></div>
+<div id="er-${p}" style="display:none" class="row"><input type="password" class="api-key" id="ki-${p}" autocomplete="off" placeholder="Paste key…">
+<button class="btn" data-sv="${p}"><i class="fa-solid fa-check"></i></button>
+<button class="btn sec" data-cn="${p}"><i class="fa-solid fa-xmark"></i></button>
+<button class="btn warn" data-dl="${p}"><i class="fa-solid fa-trash"></i></button></div>`).join('')}
+</div>
+<div class="section"><h3><i class="fa-solid fa-hard-drive"></i> Local GIFs</h3>
+<textarea class="area" id="x-lg">${S.localGifUrls||''}</textarea>
+<div class="row"><button class="btn" id="x-slg"><i class="fa-solid fa-check"></i> Save</button><span class="badge" id="x-lgst"></span></div>
+</div>
+<div class="section"><h3><i class="fa-solid fa-triangle-exclamation"></i> Danger</h3>
+<div class="row"><button class="btn warn" id="x-ra"><i class="fa-solid fa-rotate-left"></i> Reset Appearance</button>
+<button class="btn warn" id="x-rall"><i class="fa-solid fa-bomb"></i> Reset ALL</button>
+<button class="btn sec" id="x-cc"><i class="fa-solid fa-broom"></i> Clear Cache</button></div>
+</div>`;
+
+    // Bind General
+    const bk=(id,key,cb2)=>{const el=sPanel.querySelector('#'+id);if(el)el.addEventListener('change',()=>{S[key]=el.checked;saveS();cb2?.();});};
+    bk('x-close','closeOnInsert');bk('x-compact','compactMode',()=>applyVars());bk('x-tips','showTooltips');bk('x-gstar','showGifStar');bk('x-gtitles','gifShowTitles');
+
+    // Bind Appearance Inputs
+    const bindNum = (id, key) => {
+        const el = sPanel.querySelector('#'+id);
+        if(el) el.addEventListener('change', () => {
+            let v = parseFloat(el.value);
+            if(!isNaN(v)){ S[key] = v; saveS(); applyVars(); if(el.nextElementSibling && el.nextElementSibling.classList.contains('rv')) el.nextElementSibling.textContent = v; }
+        });
+    };
+    const bindColor = (id, key) => {
+        const el = sPanel.querySelector('#'+id);
+        if(el) el.addEventListener('input', () => { S[key] = el.value; saveS(); applyVars(); });
+    };
+
+    // Menu
+    bindNum('s-mw', 'menuWidth');
+    bindNum('s-mh', 'menuHeightPx');
+    bindNum('s-mr', 'menuRadius');
+    bindNum('s-bw', 'borderWidth');
+    bindNum('s-blur', 'backdropBlur');
+    // Range for Shadow
+    const shEl = sPanel.querySelector('#s-sh');
+    if(shEl) shEl.addEventListener('input', (e) => {
+        let v = parseFloat(e.target.value);
+        S.shadow = v; saveS(); applyVars();
+        e.target.nextElementSibling.textContent = v;
+    });
+
+    // Colors
+    bindColor('s-bg', 'bg');
+    bindColor('s-txt', 'text');
+    bindColor('s-acc', 'accent');
+    bindColor('s-bc', 'borderColor');
+    bindColor('s-tbg', 'tileBg');
+
+    // Grid
+    bindNum('s-es', 'emojiSize');
+    bindNum('s-gs', 'gifSize');
+    bindNum('s-ge', 'gapEmoji');
+    bindNum('s-gl', 'gapLarge');
+    bindNum('s-tr', 'tileRadius');
+    // Range for Hover Scale
+    const hsEl = sPanel.querySelector('#s-hs');
+    if(hsEl) hsEl.addEventListener('input', (e) => {
+        let v = parseFloat(e.target.value);
+        S.hoverScale = v; saveS(); applyVars();
+        e.target.nextElementSibling.textContent = v;
+    });
+
+    // Scrollbar
+    bindNum('s-sbw', 'scrollbarWidth');
+    bindColor('s-sbth', 'scrollbarThumb');
+    bindColor('s-sbt', 'scrollbarTrack');
+
+    sPanel.querySelector('#s-apply')?.addEventListener('click', ()=>{ applyVars(); notice('Theme updated'); });
+
+    // Bind Format
+    const fmtSel = sPanel.querySelector('#s-fmt');
+    if(fmtSel) fmtSel.addEventListener('change', () => { S.insertFormat = fmtSel.value; saveS(); });
+
+    // Bind API
+    ['tenor','giphy','imgur','tumblr'].forEach(p=>{
+      sPanel.querySelector(`[data-ed="${p}"]`)?.addEventListener('click',()=>{const r=sPanel.querySelector(`#er-${p}`);if(r)r.style.display='flex';});
+      sPanel.querySelector(`[data-cn="${p}"]`)?.addEventListener('click',()=>{const r=sPanel.querySelector(`#er-${p}`);if(r)r.style.display='none';});
+      sPanel.querySelector(`[data-sv="${p}"]`)?.addEventListener('click',()=>{const v=sPanel.querySelector(`#ki-${p}`)?.value?.trim();if(!v)return;setKey(p,v);showSettings();notice(`${p} key saved`);});
+      sPanel.querySelector(`[data-dl="${p}"]`)?.addEventListener('click',()=>{if(!confirm(`Delete ${p} key?`))return;setKey(p,'');showSettings();notice(`${p} key deleted`);});
+      sPanel.querySelector(`[data-ts="${p}"]`)?.addEventListener('click',async()=>{
+        const st=sPanel.querySelector(`#st-${p}`);if(st){st.textContent='…';st.className='badge badge-warn';}
+        try{const k=sPanel.querySelector(`#ki-${p}`)?.value?.trim()||getKey(p);if(!k)throw 0;let ok=false;
+          if(p==='tenor')ok=!!(await fetchJson(`https://tenor.googleapis.com/v2/featured?key=${encodeURIComponent(k)}&limit=1&media_filter=gif`))?.results;
+          if(p==='giphy')ok=!!(await fetchJson(`https://api.giphy.com/v1/gifs/trending?api_key=${encodeURIComponent(k)}&limit=1`))?.data;
+          if(p==='imgur')ok=!!(await fetchJson('https://api.imgur.com/3/credits',{Authorization:`Client-ID ${k}`}))?.data;
+          if(p==='tumblr')ok=!!(await fetchJson(`https://api.tumblr.com/v2/tagged?tag=gif&api_key=${encodeURIComponent(k)}&limit=1`))?.response;
+          if(st){st.textContent=ok?'Working':'Fail';st.className=`badge ${ok?'badge-ok':'badge-err'}`;}
+        }catch{if(st){st.textContent='Fail';st.className='badge badge-err';}}
+      });
+    });
+
+    sPanel.querySelector('#x-slg')?.addEventListener('click',async()=>{S.localGifUrls=sPanel.querySelector('#x-lg')?.value?.trim()||'';saveS();gifsLoaded=false;await loadLocalGifs();const st=sPanel.querySelector('#x-lgst');if(st){st.textContent=localGifStatus;st.className='badge badge-ok';}});
+    sPanel.querySelector('#x-ra')?.addEventListener('click',()=>{if(!confirm('Reset appearance?'))return;Object.assign(S,DEFAULTS);saveS();applyVars();showSettings();});
+    sPanel.querySelector('#x-rall')?.addEventListener('click',()=>{
+      if(!confirm('Reset EVERYTHING?'))return;
+      Object.assign(S,DEFAULTS);saveS();applyVars();
+      _favV2.emoji.clear();_favV2.sticker.clear();_favV2.gif.clear();
+      _favLeg.emoji.clear();_favLeg.sticker.clear();_favLeg.gif.clear();
+      favMeta={};
+      Object.values(K).forEach(k=>{try{GM_Set(k,k.includes('Meta')?'{}':'[]');}catch{}});
+      saveFavMeta();writeApi('global',{});writeApi('site',{});
+      applyCustomCss('');recentItems=[];GM_Set(K.recent,'[]');
+      GM_Set(K.emojiCache,'');GM_Set(K.emojiCacheTs,'0');
+      showSettings();notice('Everything reset');
+    });
+    sPanel.querySelector('#x-cc')?.addEventListener('click',()=>{GM_Set(K.emojiCache,'');GM_Set(K.emojiCacheTs,'0');notice('Cache cleared');});
+  }
+
+  // ═══════════════════════════════════════════════
+  //  TAB SWITCHING
+  // ═══════════════════════════════════════════════
+  function switchTab(t){
+    activeTab=t;
+    if(t==='home')showHome();
+    else if(t==='emojis')showEmojiPage(currentEmojiPage);
+    else if(t==='stickers')showStickerPage(currentStickerPage);
+    else if(t==='gifs')showGifPage(currentGifPage);
+    else if(t==='recent')showRecent();
+    else if(t==='settings')showSettings();
+  }
+
+  // ═══════════════════════════════════════════════
+  //  SEARCH
+  // ═══════════════════════════════════════════════
+  searchIn.addEventListener('input',debounce(()=>{
+    if(activeTab==='emojis')showEmojiPage(1);
+    else if(activeTab==='stickers')showStickerPage(1);
+    else if(activeTab==='gifs')showGifPage(1);
+  },S.searchDebounceMs||200));
+
+  pjGo.addEventListener('click',()=>{const v=parseInt(pjIn.value,10)||1;if(activeTab==='emojis')showEmojiPage(v);else if(activeTab==='stickers')showStickerPage(v);else if(activeTab==='gifs')showGifPage(v);});
+  pjIn.addEventListener('keydown',e=>{if(e.key==='Enter')pjGo.click();});
+
+  // Fav buttons
+  $('#e-fav').addEventListener('click',e=>{e.stopPropagation();favOnlyEmoji=!favOnlyEmoji;showEmojiPage(1);});
+  $('#s-fav').addEventListener('click',e=>{e.stopPropagation();favOnlyStickers=!favOnlyStickers;showStickerPage(1);});
+  $('#g-fav').addEventListener('click',e=>{e.stopPropagation();favOnlyGifs=!favOnlyGifs;showGifPage(1);});
+
+  // GIF providers
+  tbG.addEventListener('click',e=>{
+    const b=e.target.closest('.pb');if(!b)return;
+    e.stopPropagation();
+    const p=b.dataset.p;if(!provOn(p))return;
+    if(['tenor','giphy','imgur','tumblr'].includes(p)&&!hasKey(p)){switchTab('settings');notice(`Add ${p} key in Settings`);return;}
+    S.gifProvider=p;saveS();showGifPage(1);
   });
 
-  (function enableDraggableMenuFromTop() {
-    let isDragging = false; let offsetX = 0, offsetY = 0;
-    function init() {
-      const frame = document.getElementById("uni-emoji-menu"); if (!frame) return;
-      const header = frame.querySelector(".dragbtn"); if (!header) return;
-      header.style.cursor = "move";
-      header.addEventListener("mousedown", function (e) {
-        isDragging = true; const rect = frame.getBoundingClientRect();
-        offsetX = e.clientX - rect.left; offsetY = e.clientY - rect.top;
-        document.addEventListener("mousemove", onMouseMove); document.addEventListener("mouseup", onMouseUp); e.preventDefault();
-      });
-      function onMouseMove(e) { if (!isDragging) return; frame.style.left = (e.clientX - offsetX) + "px"; frame.style.top = (e.clientY - offsetY) + "px"; frame.style.right = "auto"; frame.style.bottom = "auto"; }
-      function onMouseUp() { isDragging = false; document.removeEventListener("mousemove", onMouseMove); document.removeEventListener("mouseup", onMouseUp); }
-    }
-    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else setTimeout(init, 0);
-  })();
+  // ═══════════════════════════════════════════════
+  //  FLOATING BUTTON
+  // ═══════════════════════════════════════════════
+  const BE=[  '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🥸', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🫣', '🫡', '🤗', '🤔', '🫢', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🫨', '🫠', '🙄', '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '😵‍💫', '🫥', '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈', '👿', '👹', '👺', '🤡', '💩', '👻', '💀', '☠️', '👽', '👾', '🤖', '🐵', '🐒', '🐶', '🐕', '🐩', '🐱', '🐈', '🦁', '🐯', '🐅', '🐆', '🐴', '🐎', '🦄', '🐮', '🐷', '🐖', '🐗', '🐽', '🐏', '🐑', '🐐', '🐪', '🐫', '🦙', '🐘', '🐭', '🐁', '🐀', '🐹', '🐰', '🐇', '🐿️', '🦫', '🦔', '🦇', '🐻', '🐨', '🐼', '🦥', '🦦', '🦨', '🦘', '🦡', '🐸', '🐊', '🐢', '🦎', '🐍', '🐲', '🐉', '🐳', '🐋', '🐬', '🦭', '🦈', '🐟', '🐠', '🐡', '🐙', '🦑', '🦐', '🦞', '🦀', '🐌', '🦋', '🐛', '🐜', '🐝', '🪲', '🐞', '🦗', '🪳', '🕷️'];
+  let eBtn=document.getElementById('global-emoji-button');
+  if(!eBtn){eBtn=document.createElement('span');eBtn.id='global-emoji-button';eBtn.className='emoji-button';eBtn.innerHTML='😊';eBtn.setAttribute('role','button');eBtn.tabIndex=0;document.body.appendChild(eBtn);}
+  eBtn.onmouseenter=()=>{eBtn.style.filter='grayscale(0%)';eBtn.style.transform='scale(1.1)';};
+  eBtn.onmouseleave=()=>{eBtn.style.filter='grayscale(80%)';eBtn.style.transform='scale(1)';};
+  eBtn.onclick=e=>{e.stopPropagation();const h=getComputedStyle(container).display==='none';container.style.display=h?'flex':'none';if(h)switchTab('emoji');};
 
-  applyCssVars();
-  initSettingsUI();
-  showEmojiLibraryPage(currentEmojiPage);
+  // Close & keyboard
+  container.querySelector('.close').addEventListener('click',()=>container.style.display='none');
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){container.style.display='none';hideCtx();}
+    if((e.ctrlKey||e.metaKey)&&e.altKey&&e.key.toLowerCase()==='e'){e.preventDefault();const h=getComputedStyle(container).display==='none';container.style.display=h?'flex':'none';if(h)switchTab('emoji');}
+  });
+
+  // Drag
+  {let d=false,ox=0,oy=0;
+    container.querySelector('.drag').addEventListener('mousedown',e=>{d=true;const r=container.getBoundingClientRect();ox=e.clientX-r.left;oy=e.clientY-r.top;e.preventDefault();});
+    document.addEventListener('mousemove',e=>{if(!d)return;container.style.left=(e.clientX-ox)+'px';container.style.top=(e.clientY-oy)+'px';container.style.right='auto';container.style.bottom='auto';});
+    document.addEventListener('mouseup',()=>{if(d){d=false;S.menuPositionX=container.style.left;S.menuPositionY=container.style.top;saveS();}});
+  }
+
+  // Memory cleanup
+  new MutationObserver(()=>{if(container.style.display==='none')destroyLazy();}).observe(container,{attributes:true,attributeFilter:['style']});
+  window.addEventListener('beforeunload',destroyLazy);
+
+  // ═══════════════════════════════════════════════
+  //  INIT
+  // ═══════════════════════════════════════════════
+  applyVars();buildTabs();showHome();
+  loadEmojis();loadStickers();
+  if(S.localGifUrls)loadLocalGifs();
+  showEmojiPage(1);
 })();
