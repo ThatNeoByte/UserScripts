@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            Unit3D – Style Tweaks Suite
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         1.3.9
+// @version         1.3.10
 // @description     A refined and expanded style customization suite for Unit3D-based tracker sites. Features clean, modular code, improved performance, and flexible global or site-specific configuration. Includes optional festive branding, particle effects, alert and notification enhancements, BON display tweaks, blocked alert control, and various UI refinements.
 //
 // @author          ThatNeoByte
@@ -27,6 +27,7 @@
 // @include         *://oldtoons.world/*
 // @include         *://upscalevault.com/*
 // @include         *://itatorrents.xyz/*
+// @include         *://blutopia.cc/*
 // @include         *://hd-united.vn/*
 // @include         *://luminarr.me/*
 // @include         *://rotorrent.info/*
@@ -38,6 +39,9 @@
 // @include         *://reelflix.cc/*
 // @include         *://lst.gg/*
 // @include         *://polishtorrent.top/*
+// @include         *://retro-movies.club/*
+// @include         *://rocket-hd.cc/*
+// @include         *://shareisland.org/*
 //
 // @icon            https://darkpeers.org/favicon.ico
 // @updateURL       https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/Unit3D/Unit3D-StyleTweaksSuite.user.js
@@ -236,6 +240,15 @@
         'polishtorrent.top': {
             logo: false,
         },
+        'retro-movies.club': {
+            logo: false,
+        },
+        'rocket-hd.cc': {
+            logo: false,
+        },
+        'shareisland.org': {
+            logo: false,
+        }
     };
 
     // --- DATAKEY HELPERS ---
