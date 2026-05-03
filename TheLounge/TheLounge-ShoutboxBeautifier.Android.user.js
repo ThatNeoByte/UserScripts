@@ -212,6 +212,18 @@
             domain: 'aura4k.net',
         },
         {
+            name: 'MNS',
+            matcher: /^MSBridge$/i,
+            host: 'irc.midnightascene.cc',
+            domain: 'midnightascene.cc',
+        },
+        {
+			abbreviation: 'IHD',
+			name: 'InfinityHD',
+			host: 'irc.infinityhd.net',
+			domain: 'infinityhd.net',
+		},
+        {
             disabled: true, // Disable OE+ support, as they require the file extension in the avatar URL
             name: 'OE+',
             matcher: /^bridgebot$/i,

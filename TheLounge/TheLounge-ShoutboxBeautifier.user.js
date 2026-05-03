@@ -37,6 +37,7 @@
 // @connect         hawke.uno
 // @connect         rocket-hd.cc
 // @connect         aura4k.net
+// @connect         infinityhd.net
 //
 // @grant           GM_xmlhttpRequest
 // @grant           GM_getValue
@@ -211,6 +212,18 @@
             host: 'irc.aura4k.net',
             domain: 'aura4k.net',
         },
+        {
+            name: 'MNS',
+            matcher: /^MSBridge$/i,
+            host: 'irc.midnightascene.cc',
+            domain: 'midnightascene.cc',
+        },
+        {
+			abbreviation: 'IHD',
+			name: 'InfinityHD',
+			host: 'irc.infinityhd.net',
+			domain: 'infinityhd.net',
+		},
         {
             disabled: true, // Disable OE+ support, as they require the file extension in the avatar URL
             name: 'OE+',
@@ -1612,14 +1625,19 @@
             const color = colorMatch ? colorMatch[1].trim() : null;
 
             const icon = span.querySelector("i");
-            const iconClass = icon ? icon.className : null;
+
+            const iconData = icon ? {
+                className: icon.className,
+                fontFamilyHint: getFontFamilyFromClass(icon.className)
+            } : null;
+
 
             const rankName = span.textContent.trim();
 
             if (rankName) {
                 ranks[rankName] = {
                     color,
-                    iconClass
+                    iconData
                 };
             }
         });
@@ -1643,12 +1661,12 @@
         let cachedFonts = await idbGetSiteAsset(fontCacheKey);
         let cachedCodepoints = await idbGetSiteAsset(codepointCacheKey);
 
-        let fonts = cachedFonts || {};
-        let codepoints = cachedCodepoints || null;
+        let fonts = isFontRegistry(cachedFonts) ? cachedFonts : null;
+        let codepoints = Array.isArray(cachedCodepoints) ? cachedCodepoints : null;
 
         // 2️⃣ Discover + fetch fonts if missing
         if (!fonts || Object.keys(fonts).length === 0) {
-            const discoveredFonts = await discoverFaFontUrl(site);
+            const discoveredFonts = await discoverFaFontRegistry(site);
 
             if (!discoveredFonts) {
                 console.warn(`[FA] No fonts discovered for ${site.name}`);
@@ -1657,27 +1675,30 @@
 
             fonts = {};
 
-            for (const [type, url] of Object.entries(discoveredFonts)) {
-                try {
-                    let dataUrl = url;
+            for (const [family, weights] of Object.entries(discoveredFonts)) {
+                fonts[family] = {};
 
-                    if (!url.startsWith("data:")) {
-                        const res = await gmFetchSite(site, {
-                            method: "GET",
-                            url,
-                            responseType: "blob",
-                            withCredentials: true
-                        }, 2);
+                for (const [weight, url] of Object.entries(weights)) {
+                    try {
+                        let dataUrl = url;
 
-                        if (res.status !== 200) continue;
+                        if (!url.startsWith("data:")) {
+                            const res = await gmFetchSite(site, {
+                                method: "GET",
+                                url,
+                                responseType: "blob",
+                                withCredentials: true
+                            }, 2);
 
-                        dataUrl = await blobToDataUrl(res.response);
+                            if (res.status !== 200) continue;
+
+                            dataUrl = await blobToDataUrl(res.response);
+                        }
+
+                        fonts[family][weight] = dataUrl;
+                    } catch (e) {
+                        console.warn(`[FA] Failed fetching ${family} ${weight} font for ${site.name}`, e);
                     }
-
-                    fonts[type] = dataUrl;
-
-                } catch (e) {
-                    console.warn(`[FA] Failed fetching ${type} font for ${site.name}`, e);
                 }
             }
 
@@ -1687,6 +1708,12 @@
         // 3️⃣ Codepoints
         if (!codepoints) {
             codepoints = await discoverFaCodepoints(site);
+        } else {
+            const scopedCodepoints = scopeFaBeforeRules(site, codepoints);
+            if (scopedCodepoints.length !== codepoints.length || scopedCodepoints.some((rule, index) => rule !== codepoints[index])) {
+                codepoints = scopedCodepoints;
+                await idbSetSiteAsset(codepointCacheKey, codepoints);
+            }
         }
 
         // 4️⃣ Inject
@@ -1701,124 +1728,157 @@
         });
     }
 
-    function extractFaBeforeRules(cssText) {
-        const matches = cssText.match(/\.fa-[^}]+:before{content:"[^"]+"}/g);
-        return matches || [];
+    function resolveFaStyle(iconClass) {
+        if (!iconClass) return "solid";
+
+        if (iconClass.includes("fa-brands") || iconClass.includes("fab")) return "brands";
+        if (iconClass.includes("fa-duotone") || iconClass.includes("fad")) return "duotone";
+        if (iconClass.includes("fa-light") || iconClass.includes("fal")) return "light";
+        if (iconClass.includes("fa-thin") || iconClass.includes("fat")) return "thin";
+        if (iconClass.includes("fa-regular") || iconClass.includes("far")) return "regular";
+
+        return "solid";
     }
 
-    /**
-     * Discover FA :before rules dynamically for a single site.
-     * - Fetches homepage HTML
-     * - Extracts <link rel="stylesheet"> in document order
-     * - Fetches each CSS file
-     * - Extracts .fa-*:before rules
-     * - Caches them using FontCodePointKey(site)
-     */
-    async function discoverFaCodepoints(site) {
-        const codepointCacheKey = FontCodePointKey(site);
+    function getFontFamilyFromClass(className) {
+        return resolveFaStyle(className);
+    }
 
-        try {
-            // 1️⃣ Fetch homepage
-            const htmlResponse = await gmFetchSite(site, {
-                method: "GET",
-                url: `https://${site.domain}`,
-                responseType: "text",
-                withCredentials: true
-            }, 2);
+    function normalizeAssetUrl(url, site) {
+        if (!url) return null;
 
-            if (htmlResponse.status !== 200) {
-                console.warn(`[FA] Failed to load homepage for ${site.name}`);
-                return null;
-            }
+        if (url.startsWith("//")) {
+            return "https:" + url;
+        }
 
-            const html = htmlResponse.responseText;
+        if (url.startsWith("/")) {
+            return `https://${site.domain}${url}`;
+        }
 
-            // 2️⃣ Extract stylesheet links in document order
-            const cssUrls = [];
-            const seen = new Set();
+        if (!url.startsWith("http") && !url.startsWith("data:")) {
+            return `https://${site.domain}/${url}`;
+        }
 
-            const linkRegex = /<link\b[^>]*rel=["']?stylesheet["']?[^>]*>/gi;
-            let match;
+        return url;
+    }
 
-            while ((match = linkRegex.exec(html)) !== null) {
-                const tag = match[0];
-                const hrefMatch = tag.match(/href=["']([^"']+)["']/i);
-                if (!hrefMatch) continue;
+    function extractCssUrls(html, site) {
+        const cssUrls = [];
+        const seen = new Set();
+        const linkRegex = /<link\b[^>]*rel=["']?stylesheet["']?[^>]*>/gi;
+        let match;
 
-                let href = hrefMatch[1].trim();
+        while ((match = linkRegex.exec(html)) !== null) {
+            const tag = match[0];
+            const hrefMatch = tag.match(/href=["']([^"']+)["']/i);
+            if (!hrefMatch) continue;
 
-                // Normalize URL
-                if (href.startsWith("//")) {
-                    href = "https:" + href;
-                } else if (href.startsWith("/")) {
-                    href = `https://${site.domain}${href}`;
-                } else if (!href.startsWith("http")) {
-                    href = `https://${site.domain}/${href}`;
-                }
+            const href = normalizeAssetUrl(hrefMatch[1].trim(), site);
+            if (!href || seen.has(href)) continue;
 
-                if (!seen.has(href)) {
-                    seen.add(href);
-                    cssUrls.push(href);
-                }
-            }
+            seen.add(href);
+            cssUrls.push(href);
+        }
 
-            // 3️⃣ Fetch CSS files in order and extract FA rules
-            for (const cssUrl of cssUrls) {
-                // Optional optimization: prioritize build/assets bundles
-                if (!cssUrl.includes("build") && !cssUrl.includes("asset") && !cssUrl.includes("main")) {
-                    continue;
-                }
+        return cssUrls;
+    }
 
-                try {
-                    const cssResponse = await gmFetchSite(site, {
-                        method: "GET",
-                        url: cssUrl,
-                        responseType: "text",
-                        withCredentials: true
-                    }, 2);
+    function isFontRegistry(value) {
+        if (!value || typeof value !== "object" || Array.isArray(value)) return false;
 
-                    if (cssResponse.status !== 200) continue;
+        return Object.values(value).some(entry => entry && typeof entry === "object" && !Array.isArray(entry));
+    }
 
-                    const cssText = cssResponse.responseText;
+    function makeFaCssFamily(site, family) {
+        return `FA-${site.name}-${family.replace(/\s/g, "")}`;
+    }
 
-                    // Quick FA detection shortcut
-                    if (!cssText.includes(".fa-") || !cssText.includes(":before")) {
-                        continue;
-                    }
-
-                    const beforeRules = extractFaBeforeRules(cssText);
-
-                    await idbSetSiteAsset(codepointCacheKey, beforeRules);
-                    return beforeRules;
-
-                } catch (err) {
-                    console.warn(`[FA] Failed fetching CSS ${cssUrl}`, err);
-                }
-            }
-
-            console.warn(`[FA] No FA rules discovered for ${site.name}`);
-            return null;
-
-        } catch (err) {
-            console.error(`[FA] discoverFaCodepoints error for ${site.name}`, err);
-            return null;
+    function faStyleWeight(style) {
+        switch (style) {
+            case "brands":
+            case "regular":
+                return 400;
+            case "light":
+                return 300;
+            case "thin":
+                return 100;
+            case "duotone":
+            case "solid":
+            default:
+                return 900;
         }
     }
 
-    const fontTypes = [
-        { key: "solid", regex: /fa-solid-900[^"')]+\.woff2/ },
-        { key: "regular", regex: /fa-regular-400[^"')]+\.woff2/ },
-        { key: "brands", regex: /fa-brands-400[^"')]+\.woff2/ }
-    ];
+    function familyMatchesFaStyle(family, style) {
+        const normalizedFamily = family.toLowerCase();
 
-    /**
-     * Discover the FontAwesome solid font URL dynamically.
-     * Looks through CSS bundles for @font-face blocks referencing fa-solid-900
-     */
-    async function discoverFaFontUrl(site) {
-        const fonts = {};
+        switch (style) {
+            case "brands":
+                return normalizedFamily.includes("brand");
+            case "regular":
+                return normalizedFamily.includes("regular");
+            case "light":
+                return normalizedFamily.includes("light");
+            case "thin":
+                return normalizedFamily.includes("thin");
+            case "duotone":
+                return normalizedFamily.includes("duotone") || normalizedFamily.includes("sharp");
+            case "solid":
+            default:
+                return normalizedFamily.includes("solid");
+        }
+    }
+
+    function resolveFontFamily(site, iconClass, registry) {
+        const style = resolveFaStyle(iconClass);
+        const preferredFamilies = Object.keys(registry || {});
+
+        if (preferredFamilies.length === 0) return null;
+
+        const family = preferredFamilies.find(family => familyMatchesFaStyle(family, style))
+            || preferredFamilies.find(family => /pro/i.test(family))
+            || preferredFamilies[0];
+
+        return makeFaCssFamily(site, family);
+    }
+
+    function scopeFaBeforeRules(site, rules) {
+        return (rules || []).map(rule => {
+            const scopedPrefix = `i.group-${site.name}`;
+
+            if (rule.includes(scopedPrefix)) return rule;
+
+            return rule.replace(/^(\.?fa-[^{:]+)(:before)/, `${scopedPrefix}$1$2`);
+        });
+    }
+
+    function extractFontFaces(cssText) {
+        const fontFaces = [];
+        const blocks = cssText.match(/@font-face\s*{[^}]+}/g) || [];
+
+        for (const block of blocks) {
+            const family = block.match(/font-family:\s*["']([^"']+)["']/i)?.[1];
+            const weight = block.match(/font-weight:\s*(\d+)/i)?.[1];
+            const style = block.match(/font-style:\s*([^;]+)/i)?.[1]?.trim() || "normal";
+            const src = block.match(/url\(["']?([^"')]+)["']?\)/i)?.[1];
+
+            if (family && weight && src) {
+                fontFaces.push({
+                    family,
+                    weight: Number(weight),
+                    style,
+                    url: src
+                });
+            }
+        }
+
+        return fontFaces;
+    }
+
+    async function discoverFaFontRegistry(site) {
+        const registry = {};
+
         try {
-            // 1️⃣ Fetch homepage
             const htmlResponse = await gmFetchSite(site, {
                 method: "GET",
                 url: `https://${site.domain}`,
@@ -1831,38 +1891,67 @@
                 return null;
             }
 
-            const html = htmlResponse.responseText;
+            const cssUrls = extractCssUrls(htmlResponse.responseText, site);
 
-            // 2️⃣ Extract stylesheet links
-            const cssUrls = [];
-            const seen = new Set();
-            const linkRegex = /<link\b[^>]*rel=["']?stylesheet["']?[^>]*>/gi;
-            let match;
+            for (const cssUrl of cssUrls) {
+                try {
+                    const cssResponse = await gmFetchSite(site, {
+                        method: "GET",
+                        url: cssUrl,
+                        responseType: "text",
+                        withCredentials: true
+                    }, 2);
 
-            while ((match = linkRegex.exec(html)) !== null) {
-                const tag = match[0];
-                const hrefMatch = tag.match(/href=["']([^"']+)["']/i);
-                if (!hrefMatch) continue;
+                    if (cssResponse.status !== 200) continue;
 
-                let href = hrefMatch[1].trim();
+                    const fontFaces = extractFontFaces(cssResponse.responseText);
 
-                if (href.startsWith("//")) {
-                    href = "https:" + href;
-                } else if (href.startsWith("/")) {
-                    href = `https://${site.domain}${href}`;
-                } else if (!href.startsWith("http")) {
-                    href = `https://${site.domain}/${href}`;
-                }
+                    for (const face of fontFaces) {
+                        const normalizedUrl = normalizeAssetUrl(face.url, site);
+                        if (!normalizedUrl) continue;
 
-                if (!seen.has(href)) {
-                    seen.add(href);
-                    cssUrls.push(href);
+                        registry[face.family] ??= {};
+                        registry[face.family][face.weight] = normalizedUrl;
+                    }
+                } catch (err) {
+                    console.warn(`[FA] Failed fetching CSS ${cssUrl}`, err);
                 }
             }
 
-            // 3️⃣ Fetch CSS files and look for @font-face
+            return Object.keys(registry).length > 0 ? registry : null;
+        } catch (err) {
+            console.error(`[FA] discoverFaFontRegistry error for ${site.name}`, err);
+            return null;
+        }
+    }
+
+
+    function extractFaBeforeRules(cssText) {
+        const matches = cssText.match(/\.fa-[^}]+:before{content:"[^"]+"}/g);
+        return matches || [];
+    }
+
+    async function discoverFaCodepoints(site) {
+        const codepointCacheKey = FontCodePointKey(site);
+
+        try {
+            const htmlResponse = await gmFetchSite(site, {
+                method: "GET",
+                url: `https://${site.domain}`,
+                responseType: "text",
+                withCredentials: true
+            }, 2);
+
+            if (htmlResponse.status !== 200) {
+                console.warn(`[FA] Failed to load homepage for ${site.name}`);
+                return null;
+            }
+
+            const cssUrls = extractCssUrls(htmlResponse.responseText, site);
+            const beforeRules = [];
+            const seenRules = new Set();
+
             for (const cssUrl of cssUrls) {
-                console.log(`[FA] Checking CSS ${cssUrl} for fonts...`);
                 try {
                     const cssResponse = await gmFetchSite(site, {
                         method: "GET",
@@ -1874,45 +1963,33 @@
                     if (cssResponse.status !== 200) continue;
 
                     const cssText = cssResponse.responseText;
+                    const scopedRules = scopeFaBeforeRules(site, extractFaBeforeRules(cssText));
 
-                    if (!cssText.includes("@font-face") || !cssText.includes("fa-")) {
-                        continue;
-                    }
-
-                    for (const { key, regex } of fontTypes) {
-                        const match = cssText.match(new RegExp(`url\\(["']?([^"')]*${regex.source})["']?\\)`));
-                        if (match && match[1]) {
-                            let url = match[1];
-
-                            if (url.startsWith("//")) {
-                                url = "https:" + url;
-                            } else if (url.startsWith("/")) {
-                                url = `https://${site.domain}${url}`;
-                            } else if (!url.startsWith("http")) {
-                                url = `https://${site.domain}/${url}`;
-                            }
-
-                            fonts[key] = url;
-                        }
+                    for (const rule of scopedRules) {
+                        if (seenRules.has(rule)) continue;
+                        seenRules.add(rule);
+                        beforeRules.push(rule);
                     }
 
                 } catch (err) {
-                    console.warn(`[FA] Failed reading CSS ${cssUrl}`, err);
+                    console.warn(`[FA] Failed fetching CSS ${cssUrl}`, err);
                 }
             }
 
-            if (Object.keys(fonts).length > 0) {
-                return fonts;
+            if (beforeRules.length > 0) {
+                await idbSetSiteAsset(codepointCacheKey, beforeRules);
+                return beforeRules;
             }
 
-            console.warn(`[FA] No fa-solid-900 font found for ${site.name}`);
+            console.warn(`[FA] No FA rules discovered for ${site.name}`);
             return null;
 
         } catch (err) {
-            console.error(`[FA] discoverFaFontUrl error for ${site.name}`, err);
+            console.error(`[FA] discoverFaCodepoints error for ${site.name}`, err);
             return null;
         }
     }
+
 
 
     function injectSiteFontStyles(site, fonts, beforeRules) {
@@ -1926,59 +2003,33 @@
         let css = "";
 
         // --- FONT FACES ---
-        if (fonts.solid) {
-            css += `
-            @font-face {
-                font-family: "FA-${site.name}-Solid";
-                font-style: normal;
-                font-weight: 900;
-                src: url("${fonts.solid}") format("woff2");
-            }`;
-        }
+        for (const [family, weights] of Object.entries(fonts || {})) {
+            const cssFamily = makeFaCssFamily(site, family);
 
-        if (fonts.regular) {
-            css += `
-            @font-face {
-                font-family: "FA-${site.name}-Regular";
-                font-style: normal;
-                font-weight: 400;
-                src: url("${fonts.regular}") format("woff2");
-            }`;
-        }
+            for (const [weight, url] of Object.entries(weights || {})) {
+                if (!url) continue;
 
-        if (fonts.brands) {
-            css += `
+                css += `
             @font-face {
-                font-family: "FA-${site.name}-Brands";
+                font-family: "${cssFamily}";
                 font-style: normal;
-                font-weight: 400;
-                src: url("${fonts.brands}") format("woff2");
+                font-weight: ${weight};
+                src: url("${url}") format("woff2");
             }`;
+            }
         }
 
         // --- FONT MAPPING ---
+        const styleMap = [
+            [resolveFontFamily(site, "fa-solid", fonts), `i.group-${site.name}.fa, i.group-${site.name}.fas, i.group-${site.name}.fa-solid`, faStyleWeight("solid")],
+            [resolveFontFamily(site, "fa-regular", fonts), `i.group-${site.name}.far, i.group-${site.name}.fa-regular`, faStyleWeight("regular")],
+            [resolveFontFamily(site, "fa-brands", fonts), `i.group-${site.name}.fab, i.group-${site.name}.fa-brands`, faStyleWeight("brands")],
+            [resolveFontFamily(site, "fa-light", fonts), `i.group-${site.name}.fal, i.group-${site.name}.fa-light`, faStyleWeight("light")],
+            [resolveFontFamily(site, "fa-thin", fonts), `i.group-${site.name}.fat, i.group-${site.name}.fa-thin`, faStyleWeight("thin")],
+            [resolveFontFamily(site, "fa-duotone", fonts), `i.group-${site.name}.fad, i.group-${site.name}.fa-duotone`, faStyleWeight("duotone")],
+        ];
+
         css += `
-        i.group-${site.name}.fa,
-        i.group-${site.name}.fas,
-        i.group-${site.name}.fa-solid,
-        i.group-${site.name}.fal,
-        i.group-${site.name}.fad {
-            font-family: "FA-${site.name}-Solid" !important;
-            font-weight: 900 !important;
-        }
-
-        i.group-${site.name}.far,
-        i.group-${site.name}.fa-regular {
-            font-family: "FA-${site.name}-Regular" !important;
-            font-weight: 400 !important;
-        }
-
-        i.group-${site.name}.fab,
-        i.group-${site.name}.fa-brands {
-            font-family: "FA-${site.name}-Brands" !important;
-            font-weight: 400 !important;
-        }
-
         i.group-${site.name} {
             font-style: normal;
             display: inline-block;
@@ -1988,6 +2039,17 @@
             -moz-osx-font-smoothing: grayscale;
         }
         `;
+
+        for (const [family, selector, weight] of styleMap) {
+            if (!family) continue;
+
+            css += `
+        ${selector} {
+            font-family: "${family}" !important;
+            font-weight: ${weight} !important;
+        }
+        `;
+        }
 
 
         // --- CODEPOINTS ---

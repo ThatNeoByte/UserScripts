@@ -42,6 +42,7 @@
 // @include         *://retro-movies.club/*
 // @include         *://rocket-hd.cc/*
 // @include         *://shareisland.org/*
+// @include         *://midnightscene.cc/*
 //
 // @icon            https://darkpeers.org/favicon.ico
 // @updateURL       https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/Unit3D/Unit3D-StyleTweaksSuite.user.js
@@ -247,6 +248,9 @@
             logo: false,
         },
         'shareisland.org': {
+            logo: false,
+        },
+        'midnightscene.cc': {
             logo: false,
         }
     };

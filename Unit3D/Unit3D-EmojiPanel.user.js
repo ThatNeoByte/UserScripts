@@ -49,6 +49,7 @@
 // @include         *://retro-movies.club/*
 // @include         *://rocket-hd.cc/*
 // @include         *://shareisland.org/*
+// @include         *://midnightscene.cc/*
 //
 // @grant           GM_addStyle
 // @grant           GM_setValue
