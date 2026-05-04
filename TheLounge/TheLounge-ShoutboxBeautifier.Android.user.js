@@ -216,8 +216,8 @@
         {
             name: 'MNS',
             matcher: /^MSBridge$/i,
-            host: 'irc.midnightascene.cc',
-            domain: 'midnightascene.cc',
+            host: 'irc.midnightscene.cc',
+            domain: 'midnightscene.cc',
         },
         {
 			abbreviation: 'IHD',
