@@ -37,6 +37,8 @@
 // @connect         hawke.uno
 // @connect         rocket-hd.cc
 // @connect         aura4k.net
+// @connect         infinityhd.net
+// @connect         midnightscene.cc
 //
 // @grant           GM_xmlhttpRequest
 // @grant           GM_getValue
@@ -214,8 +216,8 @@
         {
             name: 'MNS',
             matcher: /^MSBridge$/i,
-            host: 'irc.midnightascene.cc',
-            domain: 'midnightascene.cc',
+            host: 'irc.midnightscene.cc',
+            domain: 'midnightscene.cc',
         },
         {
 			abbreviation: 'IHD',

@@ -38,6 +38,7 @@
 // @connect         rocket-hd.cc
 // @connect         aura4k.net
 // @connect         infinityhd.net
+// @connect         midnightscene.cc
 //
 // @grant           GM_xmlhttpRequest
 // @grant           GM_getValue
@@ -116,9 +117,9 @@
         DECORATOR_R: '',        // Will be appended to username
         METADATA: 'SB',         // Default metadata to be inserted into HTML
         IMG_EXT: /\.(png|jpg|jpeg|gif|webp|bmp|svg|avif)$/i,
-        ALWAYS_DISPLAY_DOMAINS: [/^https?\:\/\/preview.redd.it\//, /^https?\:\/\/mm.yaf.quest\//, /^https?\:\/\/i\.seedpool\.org\/s\//, /^https?\:\/\/external-content\.duckduckgo\.com\/iu\//, /^https?\:\/\/onlyimage\.org\/image\//],
-        BYPASS_EMBED_DOMAINS: [/^https?\:\/\/img\.homiehelpdesk\.net\/share\//],
-        BYPASS_WSRV_DOMAINS: [/^https?\:\/\/ptpimg\.me\//],
+        ALWAYS_DISPLAY_DOMAINS: [/^https?:\/\/preview.redd.it\//, /^https?:\/\/mm.yaf.quest\//, /^https?:\/\/i\.seedpool\.org\/s\//, /^https?:\/\/external-content\.duckduckgo\.com\/iu\//, /^https?\:\/\/onlyimage\.org\/image\//],
+        BYPASS_EMBED_DOMAINS: [/^https?:\/\/img\.homiehelpdesk\.net\/share\//],
+        BYPASS_WSRV_DOMAINS: [/^https?:\/\/ptpimg\.me\//],
         AVATAR_CACHE_TTL: 1000 * 60 * 60 * 24 * 14, // 14 day, this is a long time, but it's to reduce load on the tracker and device. Some trackers have over 1k user in the irc, thus fetching 1k avatars every day would be bad
         ICON_CACHE_TTL: 1000 * 60 * 60 * 24 * 14, // 14 day
         PROFILE_CACHE_TTL: 1000 * 60 * 60 * 24 * 2, // 2 day
@@ -215,8 +216,8 @@
         {
             name: 'MNS',
             matcher: /^MSBridge$/i,
-            host: 'irc.midnightascene.cc',
-            domain: 'midnightascene.cc',
+            host: 'irc.midnightscene.cc',
+            domain: 'midnightscene.cc',
         },
         {
 			abbreviation: 'IHD',
@@ -321,12 +322,6 @@
         const messageText = match[match.length - 1]; // Last capture group = message
         const prefixEnd = fullMatch.lastIndexOf(messageText);
         return fullMatch.substring(0, prefixEnd);
-    }
-
-    // For when you want to remove everything except the message text
-    function removeAllExceptMessage(text, messageText) {
-        const messageStart = text.lastIndexOf(messageText);
-        return text.substring(0, messageStart);
     }
 
     function formatBytes(bytes) {
@@ -2652,6 +2647,7 @@
         const rankIcon = document.createElement("i");
 
         cache.getUser(site, username, priority).then(user => {
+            console.log(`Successfully fetched data for user ${username} on site ${site.name}:`, user);
             avatarImg.src = user.avatarUrl;
             applyRankStyling(userSpan, rankIcon, user, site);
             if (user.userIconUrl) {
