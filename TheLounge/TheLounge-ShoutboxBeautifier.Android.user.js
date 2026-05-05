@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            The Lounge – Shoutbox Beautifier Android (ThatNeoByte Edition)
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         3.0-tnb.27
+// @version         3.0-tnb.28
 // @description     Advanced rework of the original Shoutbox Beautifier for The Lounge. Reformats bridged chatbot messages to appear as native user messages, with extensible handler architecture, decorators, metadata-driven styling, regex matching, preview-safe DOM updates, and expanded network support. Fetches user details from supported UNIT3D trackers to display profile pictures, role icons, role colors, and custom icons. Note: You must be logged into each tracker in your browser for profile data to load.
 //
 // @author          spindrift
@@ -173,7 +173,6 @@
             matcher: /^DP$/i,
             host: 'irc.darkpeers.org',
             domain: 'darkpeers.org',
-            channels: ['#darkpeers', '#dphelp', '#dplog', '#dpmoderation', '#dpstaff'],
         },
         {
             name: 'BLU',
@@ -2451,7 +2450,7 @@
             // console.warn("No rank data available for user:", user);
             user.rankData = {
                     color: "rgb(73, 98, 187)",
-                    iconClass: "fad fa-user-lock"
+                    iconClass: "fas fa-user-lock"
                 }; // Fallback to a default color and icon if rank data is missing
         }
 
@@ -2508,7 +2507,7 @@
         userSpan.innerHTML = stripIrcPrefix(username); // Remove any existing text to prevent duplication when adding avatar and icon
 
         const rankIcon = document.createElement("i");
-        rankIcon.className = "group-" + site.name + " fad fa-user-robot rank-icon";
+        rankIcon.className = "group-" + site.name + " fas fa-user-robot rank-icon";
         rankIcon.style.marginLeft = "4px";
         rankIcon.style.marginRight = "4px";
 
