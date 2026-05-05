@@ -38,12 +38,7 @@
 // @connect         rocket-hd.cc
 // @connect         aura4k.net
 // @connect         infinityhd.net
-<<<<<<< HEAD
-// @connect         midnightscene.cc
-=======
 // @connect 		midnightscene.cc
->>>>>>> 56d8226bb559598c00543741f0ff80fbfcf42bb6
-//
 // @grant           GM_xmlhttpRequest
 // @grant           GM_getValue
 // @grant           GM_setValue

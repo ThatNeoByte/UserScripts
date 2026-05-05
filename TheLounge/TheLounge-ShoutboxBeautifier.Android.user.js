@@ -37,14 +37,8 @@
 // @connect         hawke.uno
 // @connect         rocket-hd.cc
 // @connect         aura4k.net
-<<<<<<< HEAD
-// @connect         infinityhd.net
-// @connect         midnightscene.cc
-=======
 // @connect 		infinityhd.net
 // @connect 		midnightscene.cc
->>>>>>> 56d8226bb559598c00543741f0ff80fbfcf42bb6
-//
 // @grant           GM_xmlhttpRequest
 // @grant           GM_getValue
 // @grant           GM_setValue
