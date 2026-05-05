@@ -53,10 +53,9 @@
         DECORATOR_L: '-',       // Will be prepended to username
         DECORATOR_R: '',        // Will be appended to username
         METADATA: 'SB',         // Default metadata to be inserted into HTML
-        IMG_EXT: /\.(png|jpg|jpeg|gif|webp|bmp|svg|avif)$/i,
-        ALWAYS_DISPLAY_DOMAINS: [/^https?:\/\/preview.redd.it\//, /^https?:\/\/mm.yaf.quest\//, /^https?:\/\/i\.seedpool\.org\/s\//, /^https?:\/\/external-content\.duckduckgo\.com\/iu\//, /^https?:\/\/onlyimage\.org\/image\//],
-        BYPASS_EMBED_DOMAINS: [/^https?:\/\/img\.homiehelpdesk\.net\/share\//],
-        BYPASS_WSRV_DOMAINS: [/^https?:\/\/ptpimg\.me\//],
+        IMG_EXT: /\.(png|jpg|jpeg|gif|webp|bmp|svg)$/i,
+        DISPLAY_DOMAINS: [/^https?:\/\/preview.redd.it\//, /^https?:\/\/mm.yaf.quest\//, /^https?:\/\/i\.seedpool\.org\/s\//, /^https?:\/\/external-content\.duckduckgo\.com\/iu\//, /^https?:\/\/onlyimage\.org\/image\//],
+        BYPASS_EMBED_DOMAINS: [/^https?:\/\/img\.homiehelpdesk\.net\/share\//, /^https?:\/\/ptpimg\.me\//],
         AVATAR_CACHE_TTL: 1000 * 60 * 60 * 24 * 14, // 14 day, this is a long time, but it's to reduce load on the tracker and device. Some trackers have over 1k user in the irc, thus fetching 1k avatars every day would be bad
         ICON_CACHE_TTL: 1000 * 60 * 60 * 24 * 14, // 14 day
         PROFILE_CACHE_TTL: 1000 * 60 * 60 * 24 * 2, // 2 day
@@ -64,11 +63,14 @@
         BOT_USERNAMES: [/^ChanServ$/i, /^HostServ$/i, /^NickServ$/i, /^SYSTEM$/i, /^SeedServ$/i, /^Banker$/i, /^Bot$/i, /^Dealer$/i, /^StatusBot$/i, /^BluBot$/i, /^SystemBot$/i, /^Rocketnouncer$/i, /^MSBar$/i, /^MSInfo$/i, /^IdleRPG$/i, /^infinity$/i, /^AuraBot$/i, /^AuraPost_?\d?$/i, /^MouseBot$/i, /^midnight-announce$/i, /^OEBot$/i, /^HDTS$/i, /^HoboLarry$/i, /^GLaDOS$/i, /^LSTANNOUNCE$/i, /_bot_?\d?\d?$/i, /-bot_?\d?\d?$/i, /\|bot_?\d?\d?$/i, /_autobrr_?\d?\d?$/i, /-autobrr_?\d?\d?$/i, /\|autobrr_?\d?\d?$/i, /_autoDL_?\d?\d?$/i, /-autoDL_?\d?\d?$/i, /\|autoDL_?\d?\d?$/i], // Used to decorate none-bridge bots 
     }
 
-    let DECORATE_USER_LIST = false;   // Whether to decorate the user list, It's helpful to disable this on mobile as it can be quite heavy on large channels, and the user list is not easily accessible on mobile anyway.
+    let USERCONFIG = {
+        DECORATE_USER_LIST: false,   // Whether to decorate the user list, It's helpful to disable this on mobile as it can be quite heavy on large channels, and the user list is not easily accessible on mobile anyway.
+        INLINE_IMAGE_PREVIEW: true,
+    }
 
-    DECORATE_USER_LIST = GM_getValue('DECORATE_USER_LIST', DECORATE_USER_LIST);
+    USERCONFIG = GM_getValue('CONFIG', USERCONFIG);
 
-    GM_setValue('DECORATE_USER_LIST', DECORATE_USER_LIST);
+    GM_setValue('CONFIG', USERCONFIG);
 
     const DEFAULT_SITE_CONFIG = {
         getAvatarUrl: user => `/authenticated-images/user-avatars/${user}`,
@@ -1152,16 +1154,59 @@
         }
     }
 
+    function cdn(url) {
+        return `https://wsrv.nl/?n=-1&w=500&h=200&url=${encodeURIComponent(url)}`;
+    }
+
+    function wrapElement(wrapperTag, element) {
+        const wrapper = document.createElement(wrapperTag);
+        element.parentNode.insertBefore(wrapper, element);
+        wrapper.appendChild(element);
+        return wrapper;
+    }
+
+    function convertLink(a) {
+        const url = a.href;
+
+        // Skip already-converted links
+        if (a.querySelector("img")) return;
+
+        if (CONFIG.BYPASS_EMBED_DOMAINS.some((re) => re.test(url))) {
+            return `<a href="${url}" dir="auto" target="_blank" rel="noopener">${url}</a>`
+        };
+
+        if (CONFIG.DISPLAY_DOMAINS.some((re) => re.test(url)) || CONFIG.IMG_EXT.test(url)) {
+            const span = wrapElement("span", a);
+            span.style.display = "block";
+
+            const img = document.createElement("img");
+            img.src = cdn(url);
+            img.style.maxWidth = "500px";
+            img.style.maxHeight = "200px";
+            img.style.borderRadius = "6px";
+            img.style.marginTop = "4px";
+
+            // Replace text inside <a> with our <img>
+            a.textContent = "";
+            a.appendChild(img);
+        }
+    }
+
     // Create and start observing DOM changes
     const observer = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
             mutation.addedNodes.forEach((node) => {
                 if (node.nodeType === 1) {
                     node.querySelectorAll?.('.messages .user').forEach(userSpan => decorateUser(userSpan, 1));
+                    
+                    if (USERCONFIG.INLINE_IMAGE_PREVIEW) {
+                        node.querySelectorAll?.("a").forEach(convertLink);
+                        if (node.tagName === "a") convertLink(node);
+                    }
                 }
             });
         });
-        if (DECORATE_USER_LIST)
+        if (USERCONFIG.DECORATE_USER_LIST)
         {
             refreshUserList();
         }
@@ -1205,8 +1250,13 @@
     });
     
     GM_registerMenuCommand("Toggle User List Decoration", async () => {
-        DECORATE_USER_LIST = !DECORATE_USER_LIST;
-        GM_setValue('DECORATE_USER_LIST', DECORATE_USER_LIST);
+        USERCONFIG.DECORATE_USER_LIST = !USERCONFIG.DECORATE_USER_LIST;
+        GM_setValue('CONFIG', USERCONFIG);
+    });
+    
+    GM_registerMenuCommand("Toggle Inline Image Preview", async () => {
+        USERCONFIG.INLINE_IMAGE_PREVIEW = !USERCONFIG.INLINE_IMAGE_PREVIEW;
+        GM_setValue('CONFIG', USERCONFIG);
     });
 
     // inject some css to make more room for the user icons and avatars, and to style the rank icons
@@ -1228,11 +1278,13 @@
 
     // Initial decoration of existing user elements
     document.querySelectorAll('.messages .user').forEach(userSpan => decorateUser(userSpan, 1));
+    if (USERCONFIG.DECORATE_USER_LIST) refreshUserList();
+    if (USERCONFIG.INLINE_IMAGE_PREVIEW) document.querySelectorAll?.("a").forEach(convertLink);
 
-    // fallback loop to load decotations in case of missed mutations or other edge cases, runs every 1 second, 
-    setInterval(() => {
-        document.querySelectorAll('.messages .user').forEach(userSpan => decorateUser(userSpan, 0));
-    }, 1_000);
+    // // fallback loop to load decotations in case of missed mutations or other edge cases, runs every 1 second, 
+    // setInterval(() => {
+    //     document.querySelectorAll('.messages .user').forEach(userSpan => decorateUser(userSpan, 0));
+    // }, 1_000);
 
     initializeObserver();
 })();

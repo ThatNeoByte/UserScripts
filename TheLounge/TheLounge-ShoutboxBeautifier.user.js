@@ -117,8 +117,8 @@
         METADATA: 'SB',         // Default metadata to be inserted into HTML
         IMG_EXT: /\.(png|jpg|jpeg|gif|webp|bmp|svg|avif)$/i,
         ALWAYS_DISPLAY_DOMAINS: [/^https?:\/\/preview.redd.it\//, /^https?:\/\/mm.yaf.quest\//, /^https?:\/\/i\.seedpool\.org\/s\//, /^https?:\/\/external-content\.duckduckgo\.com\/iu\//, /^https?\:\/\/onlyimage\.org\/image\//],
-        BYPASS_EMBED_DOMAINS: [/^https?:\/\/img\.homiehelpdesk\.net\/share\//],
-        BYPASS_WSRV_DOMAINS: [/^https?:\/\/ptpimg\.me\//],
+        BYPASS_EMBED_DOMAINS: [/^https?:\/\/img\.homiehelpdesk\.net\/share\//, /^https?:\/\/ptpimg\.me\//],
+        BYPASS_WSRV_DOMAINS: [],
         AVATAR_CACHE_TTL: 1000 * 60 * 60 * 24 * 14, // 14 day, this is a long time, but it's to reduce load on the tracker and device. Some trackers have over 1k user in the irc, thus fetching 1k avatars every day would be bad
         ICON_CACHE_TTL: 1000 * 60 * 60 * 24 * 14, // 14 day
         PROFILE_CACHE_TTL: 1000 * 60 * 60 * 24 * 2, // 2 day

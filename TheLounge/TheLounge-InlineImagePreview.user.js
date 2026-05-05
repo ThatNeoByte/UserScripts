@@ -18,7 +18,8 @@
 
 (() => {
     const IMG_EXT = /\.(png|jpg|jpeg|gif|webp|bmp|svg)$/i;
-    const DISPLAY_DOMAINS = [/^https?\:\/\/i\.seedpool\.org\/s\//, /^https?\:\/\/external-content\.duckduckgo\.com\/iu\//];
+    const DISPLAY_DOMAINS = [/^https?:\/\/preview.redd.it\//, /^https?:\/\/mm.yaf.quest\//, /^https?:\/\/i\.seedpool\.org\/s\//, /^https?:\/\/external-content\.duckduckgo\.com\/iu\//, /^https?:\/\/onlyimage\.org\/image\//];
+    const BYPASS_EMBED_DOMAINS = [/^https?:\/\/img\.homiehelpdesk\.net\/share\//, /^https?:\/\/ptpimg\.me\//];
 
     function cdn(url) {
         return `https://wsrv.nl/?n=-1&w=500&h=200&url=${encodeURIComponent(url)}`;
@@ -36,6 +37,10 @@
 
         // Skip already-converted links
         if (a.querySelector("img")) return;
+
+        if (BYPASS_EMBED_DOMAINS.some((re) => re.test(url))) {
+            return `<a href="${url}" dir="auto" target="_blank" rel="noopener">${url}</a>`
+        };
 
         if (DISPLAY_DOMAINS.some((re) => re.test(url)) || IMG_EXT.test(url)) {
             const span = wrapElement("span", a);
