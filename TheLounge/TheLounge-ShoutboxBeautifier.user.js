@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            The Lounge – Shoutbox Beautifier (ThatNeoByte Edition)
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         3.0-tnb.28
+// @version         3.0-tnb.29
 // @description     Advanced rework of the original Shoutbox Beautifier for The Lounge. Reformats bridged chatbot messages to appear as native user messages, with extensible handler architecture, decorators, metadata-driven styling, regex matching, preview-safe DOM updates, and expanded network support. Fetches user details from supported UNIT3D trackers to display profile pictures, role icons, role colors, and custom icons. Note: You must be logged into each tracker in your browser for profile data to load.
 //
 // @author          spindrift
@@ -140,12 +140,6 @@
         // Can also add regex patterns for more complex matches
         // NOTE: A hit from any matcher will run all handlers
         {
-            name: 'TNB',
-            matcher: /^NeoBot$/i,
-            host: 'irc.tnb.moe',
-            domain: 'darkpeers.org',
-        },
-        {
             name: 'ULCX',
             matcher: /^ULCX$/i,
             host: 'irc.upload.cx',
@@ -175,8 +169,7 @@
             domain: 'darkpeers.org',
         },
         {
-            name: 'BLU',
-            matcher: /^blutopiabot$/i, // There is no bridge, so nothing to match agains.
+            name: 'BLU', // Blutopia does not have a bot that bridges the messages.
             host: 'irc.p2p-network.net',
             domain: 'blutopia.cc',
             channels: ['#blutopia'],
@@ -195,7 +188,7 @@
         },
         {
             name: 'STC',
-            matcher: /^stc$/i,
+            matcher: /^stc_?$/i,
             host: 'irc.skipthecommercials.xyz',
             domain: 'skipthecommercials.xyz',
         },
@@ -218,10 +211,15 @@
             domain: 'midnightscene.cc',
         },
         {
-			abbreviation: 'IHD',
-			name: 'InfinityHD',
+            name: 'IHD', // InfinityHD does not have a bot that bridges the messages.
 			host: 'irc.infinityhd.net',
 			domain: 'infinityhd.net',
+		},
+        {
+            name: 'YUS',
+            matcher: /^YUS$/i,
+			host: 'irc.yu-scene.net',
+			domain: 'yu-scene.net',
 		},
         {
             disabled: true, // Disable OE+ support, as they require the file extension in the avatar URL

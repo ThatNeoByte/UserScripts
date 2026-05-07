@@ -2,7 +2,7 @@
 // ==UserScript==
 // @name            The Lounge – User Display
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         1.0
+// @version         1.0.1
 // @description     Displays Unit3D user decotations such as Avatar, Title, and Class in The Lounge chat client.
 //
 // @author          ThatNeoByte
@@ -112,8 +112,7 @@
             domain: 'darkpeers.org',
         },
         {
-            name: 'BLU',
-            matcher: /^blutopiabot$/i, // There is no bridge, so nothing to match against.
+            name: 'BLU', // Blutopia does not have a bot that bridges the messages.
             host: 'irc.p2p-network.net',
             domain: 'blutopia.cc',
             channels: ['#blutopia'],
@@ -155,10 +154,15 @@
             domain: 'midnightscene.cc',
         },
         {
-			abbreviation: 'IHD',
-			name: 'InfinityHD',
+            name: 'IHD', // InfinityHD does not have a bot that bridges the messages.
 			host: 'irc.infinityhd.net',
 			domain: 'infinityhd.net',
+		},
+        {
+            name: 'YUS',
+            matcher: /^YUS$/i,
+			host: 'irc.yu-scene.net',
+			domain: 'yu-scene.net',
 		},
         {
             disabled: true, // Disable BHD support, as i am not a member of that community and cannot test it.
