@@ -39,6 +39,8 @@
 // @connect         aura4k.net
 // @connect         infinityhd.net
 // @connect 		midnightscene.cc
+// @connect         yu-scene.net
+//
 // @grant           GM_xmlhttpRequest
 // @grant           GM_getValue
 // @grant           GM_setValue
