@@ -2,12 +2,11 @@
 // ==UserScript==
 // @name            The Lounge – User Display
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         1.0.1
+// @version         1.0.2
 // @description     Displays Unit3D user decotations such as Avatar, Title, and Class in The Lounge chat client.
 //
 // @author          ThatNeoByte
 // @license         MIT
-//
 //
 // @match           https://irc.thatneobyte.com/*
 //
@@ -1186,8 +1185,8 @@
 
             const img = document.createElement("img");
             img.src = cdn(url);
-            img.style.maxWidth = "500px";
-            img.style.maxHeight = "200px";
+            img.style.maxWidth = "400px";
+            img.style.maxHeight = "150px";
             img.style.borderRadius = "6px";
             img.style.marginTop = "4px";
 

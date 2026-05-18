@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            The Lounge – Shoutbox Beautifier (ThatNeoByte Edition)
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         3.0-tnb.29
+// @version         3.0-tnb.30
 // @description     Advanced rework of the original Shoutbox Beautifier for The Lounge. Reformats bridged chatbot messages to appear as native user messages, with extensible handler architecture, decorators, metadata-driven styling, regex matching, preview-safe DOM updates, and expanded network support. Fetches user details from supported UNIT3D trackers to display profile pictures, role icons, role colors, and custom icons. Note: You must be logged into each tracker in your browser for profile data to load.
 //
 // @author          spindrift
@@ -13,6 +13,7 @@
 // @source          https://aither.cc/forums/topics/3874
 //
 // @match           https://irc.thatneobyte.com/*
+// @match           https://chat.tnb.moe/*
 //
 // @icon            https://thelounge.chat/favicon.ico
 // @updateURL       https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/TheLounge/TheLounge-ShoutboxBeautifier.user.js
@@ -141,6 +142,12 @@
         // Add chatbot nicks and corresponding details here, including operator (~, @, etc.)
         // Can also add regex patterns for more complex matches
         // NOTE: A hit from any matcher will run all handlers
+        {
+            name: 'TNB',
+            matcher: /^TNB$/i,
+            host: 'irc.tnb.moe',
+            domain: 'darkpeers.org',
+        },
         {
             name: 'ULCX',
             matcher: /^ULCX$/i,
@@ -2685,6 +2692,18 @@
             }
         };
 
+        const actionsSpan = document.createElement("span");
+        actionsSpan.className = "actions";
+        const replySpan = document.createElement("span");
+        replySpan.className = "reply-action";
+        const replyButton = document.createElement("button");
+        replyButton.className = "reply-button";
+        replyButton.innerHTML = `<span aria-hidden="true"><i class="fas fa-reply" style="width: 35px; color: gray;"></i></span>`;
+
+        replySpan.appendChild(replyButton);
+        actionsSpan.appendChild(replySpan);
+        messageElement.appendChild(actionsSpan);
+        
         // Get the username
         const userSpan = messageElement.querySelector('.from .user');
         // If we can't find a username, or the username is empty after stripping IRC prefixes, skip processing this message
@@ -2720,6 +2739,20 @@
             contentSpan.querySelectorAll("a").forEach(convertLink);
 
             decorateUser(userSpan, 1);
+
+            replyButton.addEventListener("click", () => {
+                const inputarea = document.querySelector("#input");
+                if (!inputarea) return;
+
+                const contentSpan = messageElement.querySelector('.content'); // Select the content span
+                if (!contentSpan) return;
+
+                let reply = `${initialUsername}: ${contentSpan.textContent}`;
+                if (inputarea.value && !inputarea.value.endsWith(" ")) {
+                    reply = " " + reply; // Add a space if there's already content to separate the reply
+                }
+                inputarea.value += reply;
+            });
             return;
         }
 
@@ -2823,6 +2856,17 @@
         {
             decorateUser(userSpan, 1);
         }
+
+        replyButton.addEventListener("click", () => {
+            const inputarea = document.querySelector("#input");
+            if (!inputarea) return;
+
+            let reply = `${username}: ${contentSpan.textContent}`;
+            if (inputarea.value && !inputarea.value.endsWith(" ")) {
+                reply = " " + reply; // Add a space if there's already content to separate the reply
+            }
+            inputarea.value += reply;
+        });
     }
 
     function wrapElement(wrapperTag, element) {
@@ -2854,9 +2898,9 @@
             return `<a href="${url}" dir="auto" target="_blank" rel="noopener">${url}</a>`
         };
         if (CONFIG.BYPASS_WSRV_DOMAINS.some((re) => re.test(url))) {
-            return `<img src="${url}" style="width: ${widthParam}px; max-width: 500px; max-height: 200px; border-radius: 6px; margin-top: 4px;"></img>`
+            return `<img src="${url}" style="width: ${widthParam}px; max-width: 400px; max-height: 150px; border-radius: 6px; margin-top: 4px;"></img>`
         };
-        return `<img src="https://wsrv.nl/?n=-1&w=${widthParam}&h=200&url=${encodeURIComponent(url)}" style="max-width: 500px; max-height: 200px; border-radius: 6px; margin-top: 4px;"></img>`
+        return `<img src="https://wsrv.nl/?n=-1&w=${widthParam}&h=200&url=${encodeURIComponent(url)}" style="max-width: 400px; max-height: 150px; border-radius: 6px; margin-top: 4px;"></img>`
     }
 
     let loungeSocket = null; // store socket instance

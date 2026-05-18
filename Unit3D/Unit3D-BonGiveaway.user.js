@@ -157,8 +157,9 @@
     const CHECK_EVERY_HOURS = 48;
 
     const CHATROOM_IDS = {
-        'midnightscene.cc': '1',
+        'midnightscene.cc': '2',
     };
+    
     // Central host/site adapter: isolate per-site quirks in one place
     function createSiteAdapter(hostname, chatroomMap) {
         const host = String(hostname || '').trim().toLowerCase();
