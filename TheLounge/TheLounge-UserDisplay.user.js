@@ -2,7 +2,7 @@
 // ==UserScript==
 // @name            The Lounge – User Display
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         1.0.3
+// @version         1.0.4
 // @description     Displays Unit3D user decotations such as Avatar, Title, and Class in The Lounge chat client.
 //
 // @author          ThatNeoByte
@@ -47,12 +47,6 @@
 (function () {
     'use strict';
     const CONFIG = {
-        USE_AUTOCOMPLETE: true, // Enable autocomplete for usernames
-        USE_DECORATORS: true,   // Enable username decorators
-        REMOVE_JOIN_QUIT: false,// Removes join/quit messages
-        DECORATOR_L: '-',       // Will be prepended to username
-        DECORATOR_R: '',        // Will be appended to username
-        METADATA: 'SB',         // Default metadata to be inserted into HTML
         IMG_EXT: /\.(png|jpg|jpeg|gif|webp|bmp|svg)$/i,
         DISPLAY_DOMAINS: [/^https?:\/\/preview.redd.it\//, /^https?:\/\/mm.yaf.quest\//, /^https?:\/\/i\.seedpool\.org\/s\//, /^https?:\/\/external-content\.duckduckgo\.com\/iu\//, /^https?:\/\/onlyimage\.org\/image\//],
         BYPASS_EMBED_DOMAINS: [/^https?:\/\/img\.homiehelpdesk\.net\/share\//, /^https?:\/\/ptpimg\.me\//],
@@ -1427,11 +1421,6 @@
     document.querySelectorAll('.messages .user').forEach(userSpan => decorateUser(userSpan, 1));
     if (USERCONFIG.DECORATE_USER_LIST) refreshUserList();
     if (USERCONFIG.INLINE_IMAGE_PREVIEW) document.querySelectorAll?.("a").forEach(convertLink);
-
-    // // fallback loop to load decotations in case of missed mutations or other edge cases, runs every 1 second, 
-    // setInterval(() => {
-    //     document.querySelectorAll('.messages .user').forEach(userSpan => decorateUser(userSpan, 0));
-    // }, 1_000);
 
     initializeObserver();
 })();
