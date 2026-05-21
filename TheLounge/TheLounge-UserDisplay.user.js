@@ -2,7 +2,7 @@
 // ==UserScript==
 // @name            The Lounge – User Display
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         1.0.2
+// @version         1.0.3
 // @description     Displays Unit3D user decotations such as Avatar, Title, and Class in The Lounge chat client.
 //
 // @author          ThatNeoByte
@@ -351,6 +351,15 @@
         }
     }
 
+    async function clearProfileCacheForSite(site) {
+        const keys = await GM_listValues();
+        const sitePrefix = `UserMeta:${site.name}:`;
+
+        for (const key of keys.filter(k => k.startsWith(sitePrefix))) {
+            GM_deleteValue(key);
+        }
+    }
+
     async function clearAvatarCache() {
         const db = await openIdb();
 
@@ -368,6 +377,31 @@
         });
     }
 
+    async function clearAvatarCacheForSite(site) {
+        const db = await openIdb();
+
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(IDB_AVATAR_STORE, "readwrite");
+            const store = tx.objectStore(IDB_AVATAR_STORE);
+            const sitePrefix = `${site.name}:`;
+            const cursorReq = store.openKeyCursor();
+
+            cursorReq.onsuccess = () => {
+                const cursor = cursorReq.result;
+                if (!cursor) return;
+
+                if (typeof cursor.key === "string" && cursor.key.startsWith(sitePrefix)) {
+                    cursor.delete();
+                }
+
+                cursor.continue();
+            };
+
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    }
+
     async function clearAssetCache() {
         const db = await openIdb();
 
@@ -382,6 +416,31 @@
             };
 
             clearReq.onerror = () => reject(clearReq.error);
+        });
+    }
+
+    async function clearAssetCacheForSite(site) {
+        const db = await openIdb();
+
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(IDB_SITE_ASSET_STORE, "readwrite");
+            const store = tx.objectStore(IDB_SITE_ASSET_STORE);
+            const sitePrefix = `${site.name}:`;
+            const cursorReq = store.openKeyCursor();
+
+            cursorReq.onsuccess = () => {
+                const cursor = cursorReq.result;
+                if (!cursor) return;
+
+                if (typeof cursor.key === "string" && cursor.key.startsWith(sitePrefix)) {
+                    cursor.delete();
+                }
+
+                cursor.continue();
+            };
+
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
         });
     }
 
@@ -438,6 +497,53 @@
         return ranks;
     }
 
+    function getProfileRankData(doc) {
+        const userTagLink = doc.querySelector(".user-tag__link");
+        if (!userTagLink) return null;
+
+        const rankName = userTagLink.getAttribute("title")?.trim();
+        if (!rankName || rankName === "Anonymous") return null;
+
+        const colorMatch = userTagLink.getAttribute("style")?.match(/color:\s*([^;]+)/i);
+        const color = colorMatch ? colorMatch[1].trim() : null;
+        const iconClass = Array.from(userTagLink.classList)
+            .filter(className => className !== "user-tag__link" && className.startsWith("fa"))
+            .join(" ") || null;
+
+        if (!color && !iconClass) return null;
+
+        return {
+            rankName,
+            rankData: {
+                color,
+                iconClass,
+            },
+        };
+    }
+
+    async function fetchProfileRank(site, doc) {
+        let ranks = await fetchSiteRanks(site);
+        const profileRank = getProfileRankData(doc);
+        if (!profileRank) return ranks;
+
+        const currentRank = ranks[profileRank.rankName] || {};
+        const mergedRank = {
+            color: currentRank.color || profileRank.rankData.color,
+            iconClass: currentRank.iconClass || profileRank.rankData.iconClass,
+        };
+
+        if (currentRank.color !== mergedRank.color || currentRank.iconClass !== mergedRank.iconClass) {
+            ranks[profileRank.rankName] = mergedRank;
+
+            await idbSetSiteAsset(siteRankKey(site), {
+                ranks,
+                cachedAt: Date.now(),
+            });
+        }
+
+        return ranks;       
+    }
+
     function blobToDataUrl(blob) {
         return new Promise(resolve => {
             const reader = new FileReader();
@@ -451,6 +557,20 @@
         constructor() {
             this.memory = new Map();     // runtime cache
             this.pending = new Map();    // request dedupe
+        }
+
+        clearSite(siteName) {
+            for (const key of this.memory.keys()) {
+                if (key.startsWith(`${siteName}:`)) {
+                    this.memory.delete(key);
+                }
+            }
+
+            for (const key of this.pending.keys()) {
+                if (key.startsWith(`${siteName}:`)) {
+                    this.pending.delete(key);
+                }
+            }
         }
 
         async getUser(site, username, priority = 0) {
@@ -574,8 +694,9 @@
                 const html = profileResp.responseText;
                 const doc = new DOMParser().parseFromString(html, "text/html");
                 meta.userclass = doc.querySelector(".user-tag__link")?.title || "Anonymous";
-                const ranks = await fetchSiteRanks(site);
-                meta.rankData = ranks[meta.userclass] || null;
+                const ranks = await fetchProfileRank(site, doc);
+                meta.rankData = ranks[meta.userclass] || null; 
+                console.log(`Fetched profile for ${username} on ${site.name}: userclass=${meta.userclass}, rankData=`, meta.rankData);
                 meta.profileCachedAt = Date.now(); // update profile timestamp
             } else if (profileResp.status === 404) {
                 // still mark it as cached, just empty/default
@@ -1243,6 +1364,28 @@
         if (!confirm("Clear all cached site assets?")) return;
 
         await clearAssetCache();
+    });
+
+    GM_registerMenuCommand("Clear Current Site Cache", async () => {
+        const activeNetworkAndChannel = getActiveNetworkAndChannel();
+
+        if (!activeNetworkAndChannel) {
+            alert("No active channel was found, so nothing was removed.");
+            return;
+        }
+
+        const site = BOT_SITES.getSite(activeNetworkAndChannel.network_host, activeNetworkAndChannel.channel);
+        if (!site) {
+            alert("No matching site was found for the current channel, so nothing was removed.");
+            return;
+        }
+
+        if (!confirm(`Clear cache for ${site.name} only?`)) return;
+
+        await clearProfileCacheForSite(site);
+        await clearAvatarCacheForSite(site);
+        await clearAssetCacheForSite(site);
+        cache.clearSite(site.name);
     });
     
     GM_registerMenuCommand("Clear ALL Cache", async () => {
