@@ -2,7 +2,7 @@
 // ==UserScript==
 // @name            The Lounge – User Display
 // @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         1.0.4
+// @version         1.0.5
 // @description     Displays Unit3D user decotations such as Avatar, Title, and Class in The Lounge chat client.
 //
 // @author          ThatNeoByte
@@ -33,6 +33,7 @@
 // @connect         infinityhd.net
 // @connect         midnightscene.cc
 // @connect         yu-scene.net
+// @connect         znth.cx
 //
 // @grant           GM_xmlhttpRequest
 // @grant           GM_getValue
@@ -158,6 +159,11 @@
 			host: 'irc.yu-scene.net',
 			domain: 'yu-scene.net',
 		},
+        {
+            name: "ZNTH",
+            host: "irc.znth.cx",
+            domain: "znth.cx",
+        },
         {
             disabled: true, // Disable BHD support, as i am not a member of that community and cannot test it.
             name: 'BHD',
