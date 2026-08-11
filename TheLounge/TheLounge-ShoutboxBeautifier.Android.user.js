@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            The Lounge – Shoutbox Beautifier Android (ThatNeoByte Edition)
-// @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         3.0-tnb.30
+// @namespace       https://git.tnb.moe/NeoByte/UserScripts
+// @version         3.0-tnb.31
 // @description     Advanced rework of the original Shoutbox Beautifier for The Lounge. Reformats bridged chatbot messages to appear as native user messages, with extensible handler architecture, decorators, metadata-driven styling, regex matching, preview-safe DOM updates, and expanded network support. Fetches user details from supported UNIT3D trackers to display profile pictures, role icons, role colors, and custom icons. Note: You must be logged into each tracker in your browser for profile data to load.
 //
 // @author          spindrift
@@ -15,8 +15,8 @@
 // @match           https://irc.thatneobyte.com/*
 //
 // @icon            https://thelounge.chat/favicon.ico
-// @updateURL       https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/TheLounge/TheLounge-ShoutboxBeautifier.Android.user.js
-// @downloadURL     https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/TheLounge/TheLounge-ShoutboxBeautifier.Android.user.js
+// @updateURL       https://git.tnb.moe/NeoByte/UserScripts/raw/branch/main/TheLounge/TheLounge-ShoutboxBeautifier.Android.user.js
+// @downloadURL     https://git.tnb.moe/NeoByte/UserScripts/raw/branch/main/TheLounge/TheLounge-ShoutboxBeautifier.Android.user.js
 //
 // @require         https://cdn.jsdelivr.net/npm/dompurify@3.3.1/dist/purify.min.js
 // @require         https://cdn.jsdelivr.net/npm/@bbob/html@4.3.1/dist/index.min.js

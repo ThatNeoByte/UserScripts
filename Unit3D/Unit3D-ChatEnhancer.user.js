@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            Unit3D – Chat Enhancer (ThatNeoByte Edition)
-// @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         2.1.6-tnb.5
+// @namespace       https://git.tnb.moe/NeoByte/UserScripts
+// @version         2.1.6-tnb.6
 // @description     Chat enhancements for Unit3D-based sites. Includes reply, message, gift buttons, BBCode helpers, and a toggle menu. Contains a small patch by ThatNeoByte; original script by ZukoXZoku.
 //
 // @author          ZukoXZoku
@@ -12,8 +12,8 @@
 // @modified-by     ThatNeoByte (minor patch)
 //
 // @icon            https://ptpimg.me/883q39.png
-// @updateURL       https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/Unit3D/Unit3D-ChatEnhancer.user.js
-// @downloadURL     https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/Unit3D/Unit3D-ChatEnhancer.user.js
+// @updateURL       https://git.tnb.moe/NeoByte/UserScripts/raw/branch/main/Unit3D/Unit3D-ChatEnhancer.user.js
+// @downloadURL     https://git.tnb.moe/NeoByte/UserScripts/raw/branch/main/Unit3D/Unit3D-ChatEnhancer.user.js
 //
 // @include         *://darkpeers.org/*
 // @include         *://upload.cx/*

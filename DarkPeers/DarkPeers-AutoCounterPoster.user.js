@@ -1,15 +1,15 @@
 // ==UserScript==
 // @name            DarkPeers – Auto Counter Poster
-// @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         1.0.0
+// @namespace       https://git.tnb.moe/NeoByte/UserScripts
+// @version         1.0.1
 // @description     Automatically posts the next number in the DarkPeers counting thread, avoids mistakes, and skips posting after a specific user.
 // @author          ThatNeoByte
 // @license         MIT
 //
 // @match           https://darkpeers.org/forums/topics/12?*
 // @icon            https://darkpeers.org/favicon.ico
-// @updateURL       https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/DarkPeers/DarkPeers-AutoCounterPoster.user.js
-// @downloadURL     https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/DarkPeers/DarkPeers-AutoCounterPoster.user.js
+// @updateURL       https://git.tnb.moe/NeoByte/UserScripts/raw/branch/main/DarkPeers/DarkPeers-AutoCounterPoster.user.js
+// @downloadURL     https://git.tnb.moe/NeoByte/UserScripts/raw/branch/main/DarkPeers/DarkPeers-AutoCounterPoster.user.js
 //
 // @run-at          document-end
 // ==/UserScript==

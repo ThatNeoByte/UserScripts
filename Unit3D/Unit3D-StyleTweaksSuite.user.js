@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            Unit3D – Style Tweaks Suite
-// @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         1.3.11
+// @namespace       https://git.tnb.moe/NeoByte/UserScripts
+// @version         1.3.12
 // @description     A refined and expanded style customization suite for Unit3D-based tracker sites. Features clean, modular code, improved performance, and flexible global or site-specific configuration. Includes optional festive branding, particle effects, alert and notification enhancements, BON display tweaks, blocked alert control, and various UI refinements.
 //
 // @author          ThatNeoByte
@@ -45,8 +45,8 @@
 // @include         *://midnightscene.cc/*
 //
 // @icon            https://darkpeers.org/favicon.ico
-// @updateURL       https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/Unit3D/Unit3D-StyleTweaksSuite.user.js
-// @downloadURL     https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/Unit3D/Unit3D-StyleTweaksSuite.user.js
+// @updateURL       https://git.tnb.moe/NeoByte/UserScripts/raw/branch/main/Unit3D/Unit3D-StyleTweaksSuite.user.js
+// @downloadURL     https://git.tnb.moe/NeoByte/UserScripts/raw/branch/main/Unit3D/Unit3D-StyleTweaksSuite.user.js
 //
 // @grant           GM_addStyle
 // @grant           GM_registerMenuCommand

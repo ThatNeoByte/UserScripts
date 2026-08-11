@@ -1,8 +1,8 @@
 /* eslint-disable no-undef */
 // ==UserScript==
 // @name            The Lounge – User Display
-// @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         1.0.5
+// @namespace       https://git.tnb.moe/NeoByte/UserScripts
+// @version         1.0.6
 // @description     Displays Unit3D user decotations such as Avatar, Title, and Class in The Lounge chat client.
 //
 // @author          ThatNeoByte
@@ -11,8 +11,8 @@
 // @match           https://irc.thatneobyte.com/*
 //
 // @icon            https://thelounge.chat/favicon.ico
-// @updateURL       https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/TheLounge/TheLounge-UserDisplay.user.js
-// @downloadURL     https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/TheLounge/TheLounge-UserDisplay.user.js
+// @updateURL       https://git.tnb.moe/NeoByte/UserScripts/raw/branch/main/TheLounge/TheLounge-UserDisplay.user.js
+// @downloadURL     https://git.tnb.moe/NeoByte/UserScripts/raw/branch/main/TheLounge/TheLounge-UserDisplay.user.js
 //
 //
 // @connect         darkpeers.org 

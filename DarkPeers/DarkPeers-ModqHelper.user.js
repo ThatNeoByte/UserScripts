@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         DarkPeers - ModQ Helper
-// @namespace    https://github.com/ThatNeoByte/UserScripts
-// @version      2.0.1
+// @namespace    https://git.tnb.moe/NeoByte/UserScripts
+// @version      2.0.2
 // @description  Modq helper tool to check for naming and metadata issue with uploaded torrents. Adapted to work for DarkPeers.
 // @author       SOCS (original) | NeoByte (adaptation)
 // @license      MIT
@@ -13,8 +13,8 @@
 // @match        *://darkpeers.org/torrents/*
 // @match        *://luminarr.me/torrents/*
 // @icon         https://darkpeers.org/favicon.ico
-// @updateURL    https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/DarkPeers/DarkPeers-ModqHelper.user.js
-// @downloadURL  https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/DarkPeers/DarkPeers-ModqHelper.user.js
+// @updateURL    https://git.tnb.moe/NeoByte/UserScripts/raw/branch/main/DarkPeers/DarkPeers-ModqHelper.user.js
+// @downloadURL  https://git.tnb.moe/NeoByte/UserScripts/raw/branch/main/DarkPeers/DarkPeers-ModqHelper.user.js
 // @run-at       document-idle
 
 // @grant        GM_addStyle

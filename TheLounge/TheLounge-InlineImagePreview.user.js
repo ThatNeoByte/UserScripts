@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            The Lounge – Inline Image Preview
-// @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         1.1.2
+// @namespace       https://git.tnb.moe/NeoByte/UserScripts
+// @version         1.1.3
 // @description     DEPRECATED - Automatically converts image URLs in chat into inline previews using wsrv.nl.
 // @author          ThatNeoByte
 // @license         MIT

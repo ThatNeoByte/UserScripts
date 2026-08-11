@@ -1,15 +1,15 @@
 // ==UserScript==
 // @name            DarkPeers – Bulk Torrent Downloader
-// @namespace       https://github.com/ThatNeoByte/UserScripts
-// @version         1.3.1
+// @namespace       https://git.tnb.moe/NeoByte/UserScripts
+// @version         1.3.2
 // @description     Adds a button to download all torrents on the page with user confirmation (Firefox compatible)
 // @author          ThatNeoByte
 // @license         MIT
 //
 // @match           *://darkpeers.org/torrents?*
 // @icon            https://darkpeers.org/favicon.ico
-// @updateURL       https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/DarkPeers/DarkPeers-BulkTorrentDownloader.user.js
-// @downloadURL     https://raw.githubusercontent.com/ThatNeoByte/UserScripts/main/DarkPeers/DarkPeers-BulkTorrentDownloader.user.js
+// @updateURL       https://git.tnb.moe/NeoByte/UserScripts/raw/branch/main/DarkPeers/DarkPeers-BulkTorrentDownloader.user.js
+// @downloadURL     https://git.tnb.moe/NeoByte/UserScripts/raw/branch/main/DarkPeers/DarkPeers-BulkTorrentDownloader.user.js
 //
 // @grant           GM_download
 // @connect         darkpeers.org
